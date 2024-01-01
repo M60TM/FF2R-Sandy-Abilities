@@ -2,6 +2,12 @@
 My works and ports for [Freak-Fortress-2-Rewrite](https://github.com/Batfoxkid/Freak-Fortress-2-Rewrite).
 All of ports's rightful goes to their original author. I just remade them with new method(such as `SDKCall` and `CTFRadiusDamageInfo`) and cfgmap.
 
+## Installation
+Required:
+- [SM 1.11+](https://www.sourcemod.net/downloads.php)
+- [Freak-Fortress-2-Rewrite](https://github.com/Batfoxkid/Freak-Fortress-2-Rewrite)
+- [SM-TFUtils (Some plugins use this)](https://github.com/nosoop/SM-TFUtils)
+
 ----
 
 ## Building
