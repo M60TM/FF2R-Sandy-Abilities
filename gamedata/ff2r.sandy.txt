@@ -1,0 +1,87 @@
+"Games"
+{
+	"tf"
+	{
+		"Functions"
+		{
+			"CTFWeaponBaseMelee::DoSwingTraceInternal"
+			{
+				"signature"	"CTFWeaponBaseMelee::DoSwingTraceInternal"
+				"callconv"	"thiscall"
+				"return"	"bool"
+				"this"		"entity"
+				"arguments"
+				{
+					"trace"
+					{
+						"type"	"objectptr"
+					}
+					"bCleave"
+					{
+						"type"	"bool"
+					}
+					"pTargetTraceVector"
+					{
+						"type"	"objectptr"
+					}
+				}
+			}
+			"CTFPlayer::IsAllowedToTaunt"
+			{
+				"signature" "CTFPlayer::IsAllowedToTaunt"
+				"callconv" "thiscall"
+				"return" "bool"
+				"this" "entity"
+			}
+		}
+		"Signatures"
+		{
+			"CTFPlayer::PlaySpecificSequence"
+			{
+				"library"	"server"
+				"linux"		"@_ZN9CTFPlayer20PlaySpecificSequenceEPKc"
+				"windows"	"\x55\x8B\xEC\x53\x56\x8B\x75\x08\x57\x56\x8B\xF9\xE8\x2A\x2A\x2A\x2A\x8B\xD8"
+			}
+			"CTFPlayer::PlayGesture"
+			{
+				"library"	"server"
+				"linux"		"@_ZN9CTFPlayer11PlayGestureEPKc"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x30\x53\x56\x8B\x75\x08\x57\x56\x8B\xF9\xE8\x2A\x2A\x2A\x2A\x8B\xD8"
+			}
+			"CTFGameRules::PushAllPlayersAway" // string --> "merasmus_spawn"
+			{
+				"library"	"server"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x2C\x6A\x00"
+				"linux"		"@_ZN12CTFGameRules18PushAllPlayersAwayERK6VectorffiP10CUtlVectorIP9CTFPlayer10CUtlMemoryIS5_iEE"				
+			}
+			"CGlobalEntityList::FindEntityInSphere"
+			{
+				// xref "NULL entity in global entity list!\n"
+				// process of elimination -- three arguments that branch to a mov+10004h
+				// two arguments is FindEntityByModel
+				"library"	"server"
+				"linux"		"@_ZN17CGlobalEntityList18FindEntityInSphereEP11CBaseEntityRK6VectorfP17IEntityFindFilter"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x0C\x53\x56\x57\x8B\xF9\x8B\x4D\x08"
+			}
+			"CTFWeaponBaseMelee::DoSwingTraceInternal"
+			{
+				"linux"		"@_ZN18CTFWeaponBaseMelee20DoSwingTraceInternalER10CGameTracebP10CUtlVectorIS0_10CUtlMemoryIS0_iEE"
+				"windows"	"\x53\x8B\xDC\x83\xEC\x08\x83\xE4\xF0\x83\xC4\x04\x55\x8B\x6B\x04\x89\x6C\x24\x04\x8B\xEC\x81\xEC\x38\x05\x00\x00\xA1\x2A\x2A\x2A\x2A"
+			}
+			"CTFPlayer::IsAllowedToTaunt"
+			{
+				"library"	"server"
+				"linux"		"@_ZN9CTFPlayer16IsAllowedToTauntEv"
+				"windows"	"\x55\x8B\xEC\x51\x56\x8B\xF1\x8B\x06\x8B\x80\x0C\x01\x00\x00\xFF\xD0\x84\xC0\x75\x2A"
+			}
+		}
+		"Offsets"
+		{
+			"CBaseEntity::MyCombatCharacterPointer"
+			{
+				"windows"	"73"
+				"linux"		"74"
+			}
+		}
+	}
+}
