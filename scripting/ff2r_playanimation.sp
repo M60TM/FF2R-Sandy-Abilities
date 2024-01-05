@@ -75,7 +75,7 @@ public void FF2R_OnBossCreated(int client, BossData cfg, bool setup) {
 			int type = ability.GetInt("type", 2);
 			
 			DataPack pack;
-			AnimationTimerList[client].Push(CreateDataTimer(ability.GetFloat("duration"), Timer_PlayAnimation, pack, TIMER_FLAG_NO_MAPCHANGE));
+			AnimationTimerList[client].Push(CreateDataTimer(ability.GetFloat("delay"), Timer_PlayAnimation, pack, TIMER_FLAG_NO_MAPCHANGE));
 			pack.WriteCell(client);
 			pack.WriteString(animation);
 			pack.WriteCell(type);
@@ -103,7 +103,7 @@ public void FF2R_OnAbility(int client, const char[] ability, AbilityData cfg) {
 		int type = cfg.GetInt("type", 2);
 		
 		DataPack pack;
-		AnimationTimerList[client].Push(CreateDataTimer(cfg.GetFloat("duration"), Timer_PlayAnimation, pack, TIMER_FLAG_NO_MAPCHANGE));
+		AnimationTimerList[client].Push(CreateDataTimer(cfg.GetFloat("delay"), Timer_PlayAnimation, pack, TIMER_FLAG_NO_MAPCHANGE));
 		pack.WriteCell(client);
 		pack.WriteString(animation);
 		pack.WriteCell(type);
