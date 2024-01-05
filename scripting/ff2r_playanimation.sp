@@ -111,7 +111,7 @@ public void FF2R_OnAbility(int client, const char[] ability, AbilityData cfg) {
 	}
 }
 
-public void Timer_PlayAnimation(Handle timer, DataPack pack) {
+public Action Timer_PlayAnimation(Handle timer, DataPack pack) {
 	int client = pack.ReadCell();
 	if (IsClientInGame(client)) {
 		AnimationTimerList[client].Erase(AnimationTimerList[client].FindValue(timer));
@@ -122,6 +122,8 @@ public void Timer_PlayAnimation(Handle timer, DataPack pack) {
 			SetAnimation(client, animation, type);
 		}
 	}
+	
+	return Plugin_Continue;
 }
 
 stock void SetAnimation(int client, const char[] animation, int animationType) {
