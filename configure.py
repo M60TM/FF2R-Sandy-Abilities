@@ -2,21 +2,26 @@
 
 # plugin names, relative to `scripting/`
 plugins = [
-	'sample_plugin.sp',
+	'brave_double_jump.sp',
+	'ff2r_playanimation.sp',
+	'ff2r_tfcondition.sp'
 ]
 
 # files to copy to builddir, relative to root
 # plugin names from previous list will be copied automatically
-copy_files = [ ]
+copy_files = [
+	'gamedata/ff2r.sandy.txt',
+	'translations/ff2r_doublejump.phrases.txt'
+]
 
 # additional directories for sourcepawn include lookup
 # `scripting/include` is explicitly included
 include_dirs = [
-	# 'third_party/vendored'
+	'third_party/vendored'
 ]
 
 # required version of spcomp (presumably pinned to SM version)
-spcomp_min_version = (1, 9)
+spcomp_min_version = (1, 11)
 
 ########################
 # build.ninja script generation below.
