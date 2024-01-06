@@ -3,6 +3,7 @@
 # plugin names, relative to `scripting/`
 plugins = [
 	'brave_double_jump.sp',
+	'ff2r_arm.sp',
 	'ff2r_playanimation.sp',
 	'ff2r_tfcondition.sp'
 ]
