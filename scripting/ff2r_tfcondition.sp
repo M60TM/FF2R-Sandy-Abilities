@@ -24,7 +24,7 @@
 		}
 		
 		"radius"			"700.0"		// Radius.
-		"ally_condition"	"32 ; 10"	// Conditions to add ally. Still Support condition index.
+		"ally_condition"	"32 ; 10"	// Conditions to add ally. Still support condition index.
 		"victim_condition"	"30 ; 10"	// Conditions to add victim.
 
 		"plugin_name"	"ff2r_tfcondition"
@@ -102,9 +102,9 @@ void Rage_TFCondition(int client, ConfigData cfg) {
 				}
 				
 				if (victim && GetClientTeam(target) != bossTeam) {
-					ApplyTFConditionData(client, cfg, "victim_condition", additive);
+					ApplyTFConditionData(target, cfg, "victim_condition", additive);
 				} else if (ally && GetClientTeam(target) == bossTeam) {
-					ApplyTFConditionData(client, cfg, "ally_condition", additive);
+					ApplyTFConditionData(target, cfg, "ally_condition", additive);
 				}
 			}
 		}
@@ -112,9 +112,9 @@ void Rage_TFCondition(int client, ConfigData cfg) {
 		for (int target = 1; target <= MaxClients; target++) {
 			if (target != client && IsClientInGame(target) && IsPlayerAlive(target)) {
 				if (victim && GetClientTeam(target) != bossTeam) {
-					ApplyTFConditionData(client, cfg, "victim_condition", additive);
+					ApplyTFConditionData(target, cfg, "victim_condition", additive);
 				} else if (ally && GetClientTeam(target) == bossTeam) {
-					ApplyTFConditionData(client, cfg, "ally_condition", additive);
+					ApplyTFConditionData(target, cfg, "ally_condition", additive);
 				}
 			}
 		}
