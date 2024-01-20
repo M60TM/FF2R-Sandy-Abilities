@@ -6,7 +6,10 @@ All of ports's right goes to their original author. I just remade them with new 
 Required:
 - [SM 1.11+](https://www.sourcemod.net/downloads.php)
 - [Freak-Fortress-2-Rewrite](https://github.com/Batfoxkid/Freak-Fortress-2-Rewrite)
-- [SM-TFUtils (Some plugins use this)](https://github.com/nosoop/SM-TFUtils)
+- [SM-TFUtils](https://github.com/nosoop/SM-TFUtils)
+- [tf2attributes](https://github.com/FlaminSarge/tf2attributes)
+- [SM-TFDamageInfo](https://github.com/nosoop/SM-TFDamageInfo)
+- [stocksoup (compile only)](https://github.com/nosoop/stocksoup)
 
 ----
 
