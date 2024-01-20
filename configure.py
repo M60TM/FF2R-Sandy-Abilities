@@ -4,7 +4,7 @@
 plugins = [
 	'brave_double_jump.sp',
 	'ff2r_arm.sp',
-	'ff2r_dynamic_behavior',
+	'ff2r_dynamic_behavior.sp',
 	'ff2r_playanimation.sp',
 	'ff2r_tauntkillmods.sp',
 	'ff2r_tfcondition.sp'
