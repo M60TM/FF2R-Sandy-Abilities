@@ -287,7 +287,7 @@ public void OnPlayerDeath(Event event, const char[] name, bool dontBroadcast) {
 			
 			ability = boss.GetAbility("special_rage_on_kill");
 			if (ability.IsMyPlugin()) {
-				float gain = GetFormula(cfg, "gain", GetTotalPlayersAlive(CvarFriendlyFire.BoolValue ? -1 : GetClientTeam(client)), 0.0);
+				float gain = GetFormula(ability, "gain", GetTotalPlayersAlive(CvarFriendlyFire.BoolValue ? -1 : GetClientTeam(attacker)), 0.0);
 				boss.SetCharge(0, Min(boss.GetCharge(0) + gain, boss.RageMax));
 			}
 			
@@ -639,7 +639,7 @@ void PerformBreakOut(int client, ConfigData cfg) {
 	delete damageInfo;
 	
 	damage = cfg.GetFloat("force", 300.0);
-	SDKCall(SDKCall_PushAllPlayersAway, pos, radius, force, GetClientTeam(client) == 2 ? 3 : 2, 0);
+	SDKCall(SDKCall_PushAllPlayersAway, pos, radius, damage, GetClientTeam(client) == 2 ? 3 : 2, 0);
 }
 
 MRESReturn DynDetour_IsAllowedToTaunt(int client, DHookReturn ret) {
