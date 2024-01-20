@@ -20,6 +20,7 @@ copy_files = [
 # additional directories for sourcepawn include lookup
 # `scripting/include` is explicitly included
 include_dirs = [
+	'third_party/submodules',
 	'third_party/vendored'
 ]
 
