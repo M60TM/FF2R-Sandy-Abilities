@@ -144,7 +144,7 @@ void ApplyTFConditionData(int client, ConfigData cfg, const char[] key, bool add
 		}
 		case KeyValType_Value: {
 			char condition[PLATFORM_MAX_PATH];
-			if (cfg.GetString(key, condition, sizeof(condition))) {
+			if (!cfg.GetString(key, condition, sizeof(condition))) {
 				return;
 			}
 			
