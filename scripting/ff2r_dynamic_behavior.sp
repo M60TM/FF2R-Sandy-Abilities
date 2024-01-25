@@ -123,6 +123,8 @@ Handle PlayerOverlayTimer[MAXTF2PLAYERS] = { null, ... };
 
 float BlockTauntEndAt[MAXTF2PLAYERS] = { 0.0, ... };
 
+bool EmittedSoundFullRage[MAXTF2PLAYERS];
+
 ConVar CvarFriendlyFire;
 
 public Plugin myinfo = {
@@ -164,6 +166,7 @@ public void OnPluginStart() {
 	
 	HookEvent("player_death", OnPlayerDeathPre, EventHookMode_Pre);
 	HookEvent("player_death", OnPlayerDeath, EventHookMode_Post);
+	HookEvent("player_hurt", OnPlayerHurt, EventHookMode_Post);
 	HookEvent("object_destroyed", OnObjectDestroyed, EventHookMode_Pre);
 	HookEvent("arena_win_panel", OnRoundEnd);
 	
@@ -294,6 +297,7 @@ public void OnPlayerDeath(Event event, const char[] name, bool dontBroadcast) {
 			ability = boss.GetAbility("special_heal_on_kill");
 			if (ability.IsMyPlugin()) {
 				Special_HealOnKill(attacker, boss, ability);
+				FF2R_UpdateBossAttributes(attacker);
 			}
 		}
 	}
@@ -347,6 +351,25 @@ public Action OnObjectDestroyed(Event event, const char[] name, bool dontBroadca
 	return Plugin_Continue;
 }
 
+public void OnPlayerHurt(Event event, const char[] name, bool dontBroadcast) {
+	int victim = GetClientOfUserId(event.GetInt("userid"));
+	if (victim < 1 || victim > MaxClients) {
+		return;
+	}
+	
+	if (EmittedSoundFullRage[victim]) {
+		return;
+	}
+	
+	BossData boss = new BossData(victim);
+	if (boss) {
+		if (boss.GetCharge(0) >= boss.RageMax) {
+			EmittedSoundFullRage[victim] = true;
+			FF2R_EmitBossSoundToAll("sound_full_rage", victim);
+		}
+	}
+}
+
 public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast) {
 	for (int client = 1; client <= MaxClients; client++) {
 		if (PlayerOverlayTimer[client])
@@ -367,6 +390,7 @@ public void FF2R_OnBossCreated(int client, BossData cfg, bool setup) {
 	}
 	
 	BlockTauntEndAt[client] = 0.0;
+	EmittedSoundFullRage[client] = false;
 	
 	if (setup) {
 		AbilityData ability = cfg.GetAbility("special_intro_overlay");
@@ -381,6 +405,7 @@ public void FF2R_OnBossCreated(int client, BossData cfg, bool setup) {
 
 public void FF2R_OnBossRemoved(int client) {
 	BlockTauntEndAt[client] = 0.0;
+	EmittedSoundFullRage[client] = false;
 	
 	int length = BossTimers[client].Length;
 	for (int i; i < length; i++) {
@@ -471,6 +496,17 @@ public void FF2R_OnAbility(int client, const char[] ability, AbilityData cfg) {
 				}
 			}
 		}
+	}
+}
+
+public void FF2R_OnAbilityPost(int client, const char[] ability, AbilityData cfg) {
+	if (cfg.GetInt("slot") || cfg.GetInt("arg0")) {
+		return;
+	}
+	
+	// AMS or.. Something.
+	if (EmittedSoundFullRage[client]) {
+		EmittedSoundFullRage[client] = false;
 	}
 }
 
