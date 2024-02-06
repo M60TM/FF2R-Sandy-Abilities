@@ -148,6 +148,10 @@ public void NextFrame_DoubleJump(int userid) {
 		return;
 	}
 	
+	if (!BraveJump[client]) {
+		return;
+	}
+	
 	BossData boss = FF2R_GetBossData(client);
 	if (boss) {
 		AbilityData ability = boss.GetAbility("special_double_jump");

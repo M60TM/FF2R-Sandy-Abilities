@@ -190,10 +190,6 @@ public void OnPluginEnd() {
 			if (PlayerOutlineTimer[client]) {
 				TriggerTimer(PlayerOutlineTimer[client]);
 			}
-			
-			if (FF2R_GetBossData(client)) {
-				FF2R_OnBossRemoved(client);
-			}
 		}
 	}
 }
@@ -266,7 +262,7 @@ public void OnPlayerDeath(Event event, const char[] name, bool dontBroadcast) {
 		// Outline will be disappeared on death.
 		delete PlayerOutlineTimer[victim];
 		
-		if (attacker < 1 || attacker > MaxClients) {
+		if (attacker < 1 || attacker > MaxClients || attacker == victim) {
 			return;
 		}
 		
@@ -425,7 +421,7 @@ public void FF2R_OnAliveChanged(const int alive[4], const int total[4]) {
 }
 
 public void FF2R_OnAbility(int client, const char[] ability, AbilityData cfg) {
-	if (!StrContains(ability, "rage_bad_effect") && cfg.IsMyPlugin()) {
+	if (!StrContains(ability, "rage_bad_effect", false)) {
 		if (cfg.GetBool("jarate", true)) {
 			TF2_RemoveCondition(client, TFCond_Jarated);
 		}
@@ -457,7 +453,7 @@ public void FF2R_OnAbility(int client, const char[] ability, AbilityData cfg) {
 				TeleportEntity(client, NULL_VECTOR, NULL_VECTOR, {0.0, 0.0, 200.0});
 			}
 		}
-	} else if (!StrContains(ability, "rage_prevent_taunt", false) && cfg.IsMyPlugin()) {
+	} else if (!StrContains(ability, "rage_prevent_taunt", false)) {
 		BlockTauntEndAt[client] = GetGameTime() + cfg.GetFloat("duration");
 	} else if (!StrContains(ability, "rage_itsme", false)) {
 		DataPack pack;
@@ -482,7 +478,7 @@ public void FF2R_OnAbility(int client, const char[] ability, AbilityData cfg) {
 						continue;
 					}
 					
-					SetEntProp(target, Prop_Send, "m_bGlowEnabled", true);
+					SetEntProp(target, Prop_Send, "m_bGlowEnabled", 1);
 					delete PlayerOutlineTimer[target];
 					PlayerOutlineTimer[target] = CreateTimer(duration, Timer_RemoveOutline, GetClientUserId(target));
 				}
@@ -490,7 +486,7 @@ public void FF2R_OnAbility(int client, const char[] ability, AbilityData cfg) {
 		} else {
 			for (int target = 1; target <= MaxClients; target++) {
 				if (target != client && IsClientInGame(target) && IsPlayerAlive(target) && GetClientTeam(target) != bossTeam) {
-					SetEntProp(target, Prop_Send, "m_bGlowEnabled", true);
+					SetEntProp(target, Prop_Send, "m_bGlowEnabled", 1);
 					delete PlayerOutlineTimer[target];
 					PlayerOutlineTimer[target] = CreateTimer(duration, Timer_RemoveOutline, GetClientUserId(target));
 				}
@@ -632,7 +628,7 @@ public Action Timer_RemoveOutline(Handle timer, int userid) {
 	
 	if (client) {
 		PlayerOutlineTimer[client] = null;
-		SetEntProp(client, Prop_Send, "m_bGlowEnabled", false);
+		SetEntProp(client, Prop_Send, "m_bGlowEnabled", 0);
 	}
 	return Plugin_Continue;
 }
