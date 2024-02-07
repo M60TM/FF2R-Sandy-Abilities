@@ -7,6 +7,7 @@ plugins = [
 	'ff2r_difficulty_reward.sp',
 	'ff2r_dynamic_behavior.sp',
 	'ff2r_playanimation.sp',
+	'ff2r_rage_sniper.sp',
 	'ff2r_ragemodel.sp',
 	'ff2r_tauntkillmods.sp',
 	'ff2r_tfcondition.sp'
