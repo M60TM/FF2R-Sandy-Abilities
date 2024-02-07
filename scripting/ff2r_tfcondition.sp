@@ -40,6 +40,8 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+ArrayList BossTimers[MAXPLAYERS + 1];
+
 public Plugin myinfo = {
 	name = "[FF2R] TFConditions",
 	author = "Sandy and 93SHADoW",
@@ -59,7 +61,28 @@ public void OnPluginStart() {
 	}
 }
 
+// Hotfix for RuneHaste's speed buff doesn't applied on boss until it damaged.
+public void TF2_OnConditionAdded(int client, TFCond condition) {
+	if (condition == TFCond_RuneHaste) {
+		if (FF2R_GetBossData(client)) {
+			FF2R_UpdateBossAttributes(client);
+		}
+	}
+}
+
+public void TF2_OnConditionRemoved(int client, TFCond condition) {
+	if (condition == TFCond_RuneHaste) {
+		if (FF2R_GetBossData(client)) {
+			FF2R_UpdateBossAttributes(client);
+		}
+	}
+}
+
 public void FF2R_OnBossCreated(int client, BossData cfg, bool setup) {
+	if (!BossTimers[client]) {
+		BossTimers[client] = new ArrayList();
+	}
+	
 	if (!setup || FF2R_GetGamemodeType() != 2) {
 		AbilityData ability = cfg.GetAbility("special_tfcondition");
 		if (ability.IsMyPlugin()) {
@@ -68,57 +91,88 @@ public void FF2R_OnBossCreated(int client, BossData cfg, bool setup) {
 	}
 }
 
+public void FF2R_OnBossRemoved(int client) {
+	int length = BossTimers[client].Length;
+	for (int i; i < length; i++) {
+		Handle timer = BossTimers[client].Get(i);
+		delete timer;
+	}
+	
+	delete BossTimers[client];
+}
+
 public void FF2R_OnAbility(int client, const char[] ability, AbilityData cfg) {
-	if (!StrContains(ability, "rage_tfcondition", false) && cfg.IsMyPlugin()) {
-		Rage_TFCondition(client, cfg);
+	if (!StrContains(ability, "rage_tfcondition", false)) {
+		DataPack pack;
+		BossTimers[client].Push(CreateDataTimer(cfg.GetFloat("delay", 0.1), Timer_RageTFCondition, pack, TIMER_FLAG_NO_MAPCHANGE));
+		pack.WriteCell(GetClientUserId(client));
+		pack.WriteString(ability);
 	}
 }
 
-void Rage_TFCondition(int client, ConfigData cfg) {
-	bool additive = cfg.GetBool("additive", true);
-	
-	ApplyTFConditionData(client, cfg, "condition", additive);
-	
-	bool ally = cfg.GetKeyValType("ally_condition") != KeyValType_Null;
-	bool victim = cfg.GetKeyValType("victim_condition") != KeyValType_Null;
-	if (!ally && !victim) {
-		return;
+public Action Timer_RageTFCondition(Handle timer, DataPack pack) {
+	pack.Reset();
+	int client = GetClientOfUserId(pack.ReadCell());
+
+	if (!client) {
+		return Plugin_Handled;		
 	}
+
+	BossTimers[client].Erase(BossTimers[client].FindValue(timer));
 	
-	float radius = cfg.GetFloat("radius");
-	radius = radius * radius;
+	char buffer[64];
+	pack.ReadString(buffer, sizeof(buffer));
 	
-	int bossTeam = GetClientTeam(client);
+	BossData boss = FF2R_GetBossData(client);
+	AbilityData cfg = boss.GetAbility(buffer);
+	if (cfg.IsMyPlugin()) {
+		bool additive = cfg.GetBool("additive", true);
 	
-	if (radius > 0.0) {
-		float pos[3];
-		GetEntPropVector(client, Prop_Send, "m_vecOrigin", pos);
-		for (int target = 1; target <= MaxClients; target++) {	
-			if (target != client && IsClientInGame(target) && IsPlayerAlive(target)) {
-				float targetPos[3];
-				GetEntPropVector(target, Prop_Send, "m_vecOrigin", targetPos);
-				if (GetVectorDistance(pos, targetPos, true) > radius) {
-					continue;
+		ApplyTFConditionData(client, cfg, "condition", additive);
+		
+		bool ally = cfg.GetKeyValType("ally_condition") != KeyValType_Null;
+		bool victim = cfg.GetKeyValType("victim_condition") != KeyValType_Null;
+		if (!ally && !victim) {
+			return Plugin_Continue;
+		}
+		
+		float radius = cfg.GetFloat("radius");
+		radius = radius * radius;
+		
+		int bossTeam = GetClientTeam(client);
+		
+		if (radius > 0.0) {
+			float pos[3];
+			GetEntPropVector(client, Prop_Send, "m_vecOrigin", pos);
+			for (int target = 1; target <= MaxClients; target++) {	
+				if (target != client && IsClientInGame(target) && IsPlayerAlive(target)) {
+					float targetPos[3];
+					GetEntPropVector(target, Prop_Send, "m_vecOrigin", targetPos);
+					if (GetVectorDistance(pos, targetPos, true) > radius) {
+						continue;
+					}
+					
+					if (victim && GetClientTeam(target) != bossTeam) {
+						ApplyTFConditionData(target, cfg, "victim_condition", additive);
+					} else if (ally && GetClientTeam(target) == bossTeam) {
+						ApplyTFConditionData(target, cfg, "ally_condition", additive);
+					}
 				}
-				
-				if (victim && GetClientTeam(target) != bossTeam) {
-					ApplyTFConditionData(target, cfg, "victim_condition", additive);
-				} else if (ally && GetClientTeam(target) == bossTeam) {
-					ApplyTFConditionData(target, cfg, "ally_condition", additive);
+			}
+		} else {
+			for (int target = 1; target <= MaxClients; target++) {
+				if (target != client && IsClientInGame(target) && IsPlayerAlive(target)) {
+					if (victim && GetClientTeam(target) != bossTeam) {
+						ApplyTFConditionData(target, cfg, "victim_condition", additive);
+					} else if (ally && GetClientTeam(target) == bossTeam) {
+						ApplyTFConditionData(target, cfg, "ally_condition", additive);
+					}
 				}
 			}
 		}
-	} else {
-		for (int target = 1; target <= MaxClients; target++) {
-			if (target != client && IsClientInGame(target) && IsPlayerAlive(target)) {
-				if (victim && GetClientTeam(target) != bossTeam) {
-					ApplyTFConditionData(target, cfg, "victim_condition", additive);
-				} else if (ally && GetClientTeam(target) == bossTeam) {
-					ApplyTFConditionData(target, cfg, "ally_condition", additive);
-				}
-			}
-		}
 	}
+	
+	return Plugin_Continue;
 }
 
 void ApplyTFConditionData(int client, ConfigData cfg, const char[] key, bool additive) {
