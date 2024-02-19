@@ -51,12 +51,28 @@ public Plugin myinfo = {
 };
 
 public void OnPluginStart() {
+	HookEvent("teamplay_round_win", OnRoundEnd);
+	
 	for (int client = 1; client <= MaxClients; client++) {
 		if (IsClientInGame(client)) {
 			BossData cfg = FF2R_GetBossData(client);
 			if (cfg) {
 				FF2R_OnBossCreated(client, cfg, false);
 			}
+		}
+	}
+}
+
+// Hotfix for Team Switch wasn't applied if target has HalloweenKart Condition.
+public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast) {
+	// Otherwise, not enabled.
+	if (FF2R_GetGamemodeType() != 2) {
+		return;
+	}
+	
+	for (int client = 1; client <= MaxClients; client++) {
+		if (IsClientInGame(client)) {
+			TF2_RemoveCondition(client, TFCond_HalloweenKart);
 		}
 	}
 }
