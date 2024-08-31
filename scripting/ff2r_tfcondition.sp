@@ -19,7 +19,7 @@
 		
 		"condition"	// Named Condition Support!
 		{
-			"TF_COND_CRITBOOSTED_FIRST_BLOOD"	"8.0"
+			"TF_COND_CRITBOOSTED_FIRST_BLOOD"	"8.0 + (n * 0.2)"	// Formula support.
 			"TF_COND_SPEED_BOOST"				"8.0"
 		}
 		
@@ -40,7 +40,14 @@
 #pragma semicolon 1
 #pragma newdecls required
 
+#include "freak_fortress_2/formula_parser.sp"
+
 ArrayList BossTimers[MAXPLAYERS + 1];
+
+ConVar CvarFriendlyFire;
+
+int PlayersAlive[4];
+bool SpecTeam;
 
 public Plugin myinfo = {
 	name = "[FF2R] TFConditions",
@@ -52,6 +59,8 @@ public Plugin myinfo = {
 
 public void OnPluginStart() {
 	HookEvent("teamplay_round_win", OnRoundEnd);
+	
+	CvarFriendlyFire = FindConVar("mp_friendlyfire");
 	
 	for (int client = 1; client <= MaxClients; client++) {
 		if (IsClientInGame(client)) {
@@ -124,6 +133,14 @@ public void FF2R_OnAbility(int client, const char[] ability, AbilityData cfg) {
 		pack.WriteCell(GetClientUserId(client));
 		pack.WriteString(ability);
 	}
+}
+
+public void FF2R_OnAliveChanged(const int alive[4], const int total[4]) {
+	for (int i; i < 4; i++) {
+		PlayersAlive[i] = alive[i];
+	}
+
+	SpecTeam = (total[TFTeam_Unassigned] || total[TFTeam_Spectator]);
 }
 
 public Action Timer_RageTFCondition(Handle timer, DataPack pack) {
@@ -205,7 +222,7 @@ void ApplyTFConditionData(int client, ConfigData cfg, const char[] key, bool add
 				snap.GetKey(i, buffer, length);
 				
 				if (TranslateTFCond(buffer, cond)) {
-					float duration = condition.GetFloat(buffer);
+					float duration = GetFormula(condition, buffer, GetTotalPlayersAlive(CvarFriendlyFire.BoolValue ? -1 : GetClientTeam(client)));
 					ApplyTFCondition(client, cond, duration, additive);
 				}
 			}
@@ -223,7 +240,7 @@ void ApplyTFConditionData(int client, ConfigData cfg, const char[] key, bool add
 			if (count > 0) {
 				for (int i = 0; i < count; i += 2) {
 					TFCond cond = view_as<TFCond>(StringToInt(conds[i]));
-					float duration = StringToFloat(conds[i + 1]);
+					float duration = ParseFormula(conds[i + 1], GetTotalPlayersAlive(CvarFriendlyFire.BoolValue ? -1 : GetClientTeam(client)));
 					ApplyTFCondition(client, cond, duration, additive);
 				}
 			}
@@ -248,6 +265,24 @@ void ApplyTFCondition(int client, TFCond cond, float duration, bool additive) {
 		float currentDuration = TF2Util_GetPlayerConditionDuration(client, cond);
 		TF2Util_SetPlayerConditionDuration(client, cond, currentDuration + duration);
 	}
+}
+
+int GetTotalPlayersAlive(int team = -1) {
+	int amount;
+	for (int i = SpecTeam ? 0 : 2; i < sizeof(PlayersAlive); i++) {
+		if (i != team)
+			amount += PlayersAlive[i];
+	}
+
+	return amount;
+}
+
+float GetFormula(ConfigData cfg, const char[] key, int players, float flDefault = 0.0) {
+	static char buffer[1024];
+	if (!cfg.GetString(key, buffer, sizeof(buffer)))
+		return flDefault;
+
+	return ParseFormula(buffer, players);
 }
 
 stock bool TranslateTFCond(const char[] name, TFCond &value) {
