@@ -1,0 +1,9 @@
+"Phrases"
+{
+	"Queue Point Refund"
+	{
+		"#format"	"{1:d}"
+		"en"	"You got {1} queue points for Challenge Reward."
+		"ko"	"도전에 대한 보상으로 {1} 포인트를 환급받았습니다."
+	}
+}

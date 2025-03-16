@@ -129,7 +129,7 @@ public void FF2R_OnBossRemoved(int client) {
 public void FF2R_OnAbility(int client, const char[] ability, AbilityData cfg) {
 	if (!StrContains(ability, "rage_tfcondition", false)) {
 		DataPack pack;
-		BossTimers[client].Push(CreateDataTimer(cfg.GetFloat("delay", 0.1), Timer_RageTFCondition, pack, TIMER_FLAG_NO_MAPCHANGE));
+		BossTimers[client].Push(CreateDataTimer(GetFormula(cfg, "delay", TotalPlayersAliveEnemy(CvarFriendlyFire.BoolValue ? -1 : GetClientTeam(client))), Timer_RageTFCondition, pack, TIMER_FLAG_NO_MAPCHANGE));
 		pack.WriteCell(GetClientUserId(client));
 		pack.WriteString(ability);
 	}
@@ -160,7 +160,6 @@ public Action Timer_RageTFCondition(Handle timer, DataPack pack) {
 	AbilityData cfg = boss.GetAbility(buffer);
 	if (cfg.IsMyPlugin()) {
 		bool additive = cfg.GetBool("additive", true);
-	
 		ApplyTFConditionData(client, cfg, "condition", additive);
 		
 		bool ally = cfg.GetKeyValType("ally_condition") != KeyValType_Null;
@@ -222,7 +221,7 @@ void ApplyTFConditionData(int client, ConfigData cfg, const char[] key, bool add
 				snap.GetKey(i, buffer, length);
 				
 				if (TranslateTFCond(buffer, cond)) {
-					float duration = GetFormula(condition, buffer, GetTotalPlayersAlive(CvarFriendlyFire.BoolValue ? -1 : GetClientTeam(client)));
+					float duration = GetFormula(condition, buffer, TotalPlayersAliveEnemy(CvarFriendlyFire.BoolValue ? -1 : GetClientTeam(client)));
 					ApplyTFCondition(client, cond, duration, additive);
 				}
 			}
@@ -240,7 +239,7 @@ void ApplyTFConditionData(int client, ConfigData cfg, const char[] key, bool add
 			if (count > 0) {
 				for (int i = 0; i < count; i += 2) {
 					TFCond cond = view_as<TFCond>(StringToInt(conds[i]));
-					float duration = ParseFormula(conds[i + 1], GetTotalPlayersAlive(CvarFriendlyFire.BoolValue ? -1 : GetClientTeam(client)));
+					float duration = ParseFormula(conds[i + 1], TotalPlayersAliveEnemy(CvarFriendlyFire.BoolValue ? -1 : GetClientTeam(client)));
 					ApplyTFCondition(client, cond, duration, additive);
 				}
 			}
@@ -255,7 +254,7 @@ void ApplyTFCondition(int client, TFCond cond, float duration, bool additive) {
 	if (!TF2_IsPlayerInCondition(client, cond)) {
 		if (duration < 0.0)
 			duration = TFCondDuration_Infinite;
-						
+					
 		TF2_AddCondition(client, cond, duration);
 	} else {
 		if (!additive) {
@@ -267,7 +266,7 @@ void ApplyTFCondition(int client, TFCond cond, float duration, bool additive) {
 	}
 }
 
-int GetTotalPlayersAlive(int team = -1) {
+int TotalPlayersAliveEnemy(int team = -1) {
 	int amount;
 	for (int i = SpecTeam ? 0 : 2; i < sizeof(PlayersAlive); i++) {
 		if (i != team)
