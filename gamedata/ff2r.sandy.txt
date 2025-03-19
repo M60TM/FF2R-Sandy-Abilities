@@ -26,13 +26,6 @@
 					}
 				}
 			}
-			"CTFPlayer::IsAllowedToTaunt"
-			{
-				"signature" "CTFPlayer::IsAllowedToTaunt"
-				"callconv" "thiscall"
-				"return" "bool"
-				"this" "entity"
-			}
 			"CTFGrenadePipebombProjectile::VPhysicsCollision"
 			{
 				"offset"		"CTFGrenadePipebombProjectile::VPhysicsCollision"
@@ -52,13 +45,6 @@
 					}
 				}
 			}
-			"CTFGameMovement::ChargeMove"
-			{
-				"signature"	"CTFGameMovement::ChargeMove"
-				"callconv"	"thiscall"
-				"return" 	"bool"
-				"this"		"address"
-			}
 			"CTFProjectile_Cleaver::OnHit(CBaseEntity*)"
 			{
 				"offset"		"CTFProjectile_Cleaver::OnHit(CBaseEntity*)"
@@ -76,22 +62,34 @@
 		}
 		"Signatures"
 		{
+			"LookupActivity" //random guessing.
+			{
+				//this function looks nothing like the one in linux, its littearlly guessing good luck.
+				"library"	"server"
+				"windows"	"\x55\x8B\xEC\x57\x8B\x7D\x08\x85\xFF\x75\x2A\x33\xC0\x5F\x5D\xC3\x53"
+				"linux"		"@_Z14LookupActivityP10CStudioHdrPKc"
+			}
 			"CTFPlayer::PlaySpecificSequence"
 			{
 				"library"	"server"
 				"linux"		"@_ZN9CTFPlayer20PlaySpecificSequenceEPKc"
-				"windows"	"\x55\x8B\xEC\x53\x56\x8B\x75\x08\x57\x56\x8B\xF9\xE8\x2A\x2A\x2A\x2A\x8B\xD8"
+				"windows"	"\x55\x8B\xEC\x56\xFF\x75\x08\x8B\xF1\xE8\x2A\x2A\x2A\x2A\x8B\xCE\x83\xF8\xFF"
 			}
 			"CTFPlayer::PlayGesture"
 			{
 				"library"	"server"
 				"linux"		"@_ZN9CTFPlayer11PlayGestureEPKc"
-				"windows"	"\x55\x8B\xEC\x83\xEC\x30\x53\x56\x8B\x75\x08\x57\x56\x8B\xF9\xE8\x2A\x2A\x2A\x2A\x8B\xD8"
 			}
-			"CTFGameRules::PushAllPlayersAway" // string --> "merasmus_spawn"
+			"CTFPlayer::DoAnimationEvent"
 			{
+				"linux"		"@_ZN9CTFPlayer16DoAnimationEventE17PlayerAnimEvent_ti"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x2C\x53\x56\x8B\x35\x2A\x2A\x2A\x2A"
+			}
+			"CTFGameRules::PushAllPlayersAway"
+			{
+				// unique xref to string "player_rocketpack_pushed"
 				"library"	"server"
-				"windows"	"\x55\x8B\xEC\x83\xEC\x2C\x6A\x00"
+				"windows"	"\x55\x8B\xEC\x83\xEC\x2C\x56\x6A\x00"
 				"linux"		"@_ZN12CTFGameRules18PushAllPlayersAwayERK6VectorffiP10CUtlVectorIP9CTFPlayer10CUtlMemoryIS5_iEE"				
 			}
 			"CGlobalEntityList::FindEntityInSphere"
@@ -101,28 +99,20 @@
 				// two arguments is FindEntityByModel
 				"library"	"server"
 				"linux"		"@_ZN17CGlobalEntityList18FindEntityInSphereEP11CBaseEntityRK6VectorfP17IEntityFindFilter"
-				"windows"	"\x55\x8B\xEC\x83\xEC\x0C\x53\x56\x57\x8B\xF9\x8B\x4D\x08"
+				"windows"	"\x55\x8B\xEC\x51\xF3\x0F\x10\x45\x10\x33\xC9"
 			}
 			"CTFWeaponBaseMelee::DoSwingTraceInternal"
 			{
 				"linux"		"@_ZN18CTFWeaponBaseMelee20DoSwingTraceInternalER10CGameTracebP10CUtlVectorIS0_10CUtlMemoryIS0_iEE"
 				"windows"	"\x53\x8B\xDC\x83\xEC\x08\x83\xE4\xF0\x83\xC4\x04\x55\x8B\x6B\x04\x89\x6C\x24\x04\x8B\xEC\x81\xEC\x38\x05\x00\x00\xA1\x2A\x2A\x2A\x2A"
 			}
-			"CTFPlayer::IsAllowedToTaunt"
-			{
-				"library"	"server"
-				"linux"		"@_ZN9CTFPlayer16IsAllowedToTauntEv"
-				"windows"	"\x55\x8B\xEC\x51\x56\x8B\xF1\x8B\x06\x8B\x80\x0C\x01\x00\x00\xFF\xD0\x84\xC0\x75\x2A"
-			}
-			"CTFGameMovement::ChargeMove"
-			{
-				"library"	"server"
-				"linux"		"@_ZN15CTFGameMovement10ChargeMoveEv"
-			}
 			"CTFPlayer::RemoveAllCustomAttributes"
 			{
+				// last function call of "CTFPlayer::Event_Killed".
+				// "CTFPlayer::Event_Killed" has xref to string "conga_kill"
 				"library"	"server"
 				"linux"		"@_ZN9CTFPlayer25RemoveAllCustomAttributesEv"
+				"windows"	"\x55\x8B\xEC\x51\x53\x56\x8B\xF1\x33\xC0\x57\x33\xFF\x66\x3B\x86\xE8\x25\x00\x00"
 			}
 		}
 		"Offsets"
