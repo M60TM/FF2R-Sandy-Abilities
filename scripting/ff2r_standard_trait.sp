@@ -3,7 +3,11 @@
 	{
 		"weaponid"
 		{
-			"8"
+			"8" // It must be a number corresponding to TF_WEAPON_* in tf2_stocks.inc 
+			{
+				"name"	"fists"
+			}
+			"tf_projectile_rocket"	// Or kill icon name in mod_textures.txt
 			{
 				"name"	"fists"
 			}
@@ -228,6 +232,7 @@ public Action OnPlayerDeathPre(Event event, const char[] name, bool dontBroadcas
 	if (boss) {
 		AbilityData ability = boss.GetAbility("special_kill_log");
 		if (ability.IsMyPlugin()) {
+			// first, check weapon id
 			int weaponID = event.GetInt("weaponid");
 			
 			char buffer[64];
@@ -239,6 +244,20 @@ public Action OnPlayerDeathPre(Event event, const char[] name, bool dontBroadcas
 				event.SetString("weapon", buffer);
 				
 				return Plugin_Changed;
+			} 
+			else { // If it doesn't exist, check weapon name
+				event.GetString("weapon", buffer, sizeof(buffer));
+				if (buffer[0]) {
+					FormatEx(buffer, sizeof(buffer), "weaponid.%s", buffer);
+					SectionID = ability.GetSection(buffer);
+					if (SectionID) {
+						SectionID.GetString("name", buffer, sizeof(buffer));
+						event.SetString("weapon_logclassname", buffer);
+						event.SetString("weapon", buffer);
+						
+						return Plugin_Changed;
+					}
+				}
 			}
 		}
 	}
@@ -256,6 +275,7 @@ public Action OnObjectDestroyed(Event event, const char[] name, bool dontBroadca
 	if (boss) {
 		AbilityData ability = boss.GetAbility("special_kill_log");
 		if (ability.IsMyPlugin()) {
+			// first, check weapon id
 			int weaponID = event.GetInt("weaponid");
 			
 			char buffer[64];
@@ -267,6 +287,20 @@ public Action OnObjectDestroyed(Event event, const char[] name, bool dontBroadca
 				event.SetString("weapon", buffer);
 				
 				return Plugin_Changed;
+			} 
+			else { // If it doesn't exist, check weapon name
+				event.GetString("weapon", buffer, sizeof(buffer));
+				if (buffer[0]) {
+					FormatEx(buffer, sizeof(buffer), "weaponid.%s", buffer);
+					SectionID = ability.GetSection(buffer);
+					if (SectionID) {
+						SectionID.GetString("name", buffer, sizeof(buffer));
+						event.SetString("weapon_logclassname", buffer);
+						event.SetString("weapon", buffer);
+						
+						return Plugin_Changed;
+					}
+				}
 			}
 		}
 	}
