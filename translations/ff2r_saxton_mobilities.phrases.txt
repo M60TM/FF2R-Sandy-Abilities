@@ -1,0 +1,44 @@
+"Phrases"
+{
+	"Double Jump Ready"
+	{
+		"en"	"Brave Jump | Double-Tap Space"
+		"ko"	"브레이브 점프 | 이단 점프로 사용"
+	}
+	"Double Jump Not Ready"
+	{
+		"#format"	"{1:.1f}"
+		"en"	"Brave Jump will be available in {1} second(s)"
+		"ko"	"{1}초 뒤 브레이브 점프 사용 가능"
+	}
+	"Charge Dash Ready"
+	{
+		"#format"	"{1:t},{2:d}"
+		"en"	"Charge Dash | Hold [{1}] to Activate ({2}%%)"
+		"ko"	"차지 대시 | [{1}]를 눌러 충전 ({2}%%)"
+	}
+	"Charge Dash Charge"
+	{
+		"#format"	"{1:t},{2:d}"
+		"en"	"Charge Dash | Hold [{1}] and Release ({2}%%)"
+		"ko"	"차지 대시 | [{1}]를 떼면 발동 ({2}%%)"
+	}
+	"Charge Dash Not Ready"
+	{
+		"#format"	"{1:.1f}"
+		"en"	"Charge Dash will be available in {1} second(s)"
+		"ko"	"차지 대시 | 사용까지 {1}초 남음"
+	}
+	"Mighty Slam Ready"
+	{
+		"#format"	"{1:t}"
+		"en"	"Mighty Slam | Hold {1} while weighdown"
+		"ko"	"내려찍기 | 급강하 중 {1}키 유지"
+	}
+	"Mighty Slam Not Ready"
+	{
+		"#format"	"{1:.1f}"
+		"en"	"Mighty Slam will be available in {1} second(s)"
+		"ko"	"내려찍기 | 사용까지 {1}초 남음"
+	}
+}
