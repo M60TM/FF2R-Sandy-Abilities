@@ -2,15 +2,6 @@
 {
 	"tf"
 	{
-		"Offsets"
-		{
-			"CTeamplayRules::SetScrambleTeams"
-			{
-				"library"	"server"
-				"linux"		"170"
-				"windows"	"169"
-			}
-		}
 		"Signatures"
 		{
 			"CTeamplayRoundBasedRules::State_Enter"

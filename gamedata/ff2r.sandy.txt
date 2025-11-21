@@ -59,6 +59,20 @@
 					}
 				}
 			}
+			"CTFSword::GetSwordSpeedMod()"
+			{
+				"offset"		"CTFSword::GetSwordSpeedMod()"
+				"hooktype"		"entity"
+				"return"		"float"
+				"this"			"entity"
+			}
+			"CTFSword::GetSwordHealthMod()"
+			{
+				"offset"		"CTFSword::GetSwordHealthMod()"
+				"hooktype"		"entity"
+				"return"		"int"
+				"this"			"entity"
+			}
 		}
 		"Signatures"
 		{
@@ -114,36 +128,52 @@
 				"linux"		"@_ZN9CTFPlayer25RemoveAllCustomAttributesEv"
 				"windows"	"\x55\x8B\xEC\x51\x53\x56\x8B\xF1\x33\xC0\x57\x33\xFF\x66\x3B\x86\xE8\x25\x00\x00"
 			}
+			"CGlobalEntityList::FindEntityByClassnameWithin"
+			{
+				"linux"		"@_ZN17CGlobalEntityList27FindEntityByClassnameWithinEP11CBaseEntityPKcRK6VectorS6_P17IEntityFindFilter"
+			}
 		}
 		"Offsets"
 		{
 			"CBaseEntity::MyCombatCharacterPointer"
 			{
-				"windows"	"73"
-				"linux"		"74"
+				"windows"	"74"
+				"linux"		"75"
 			}
 			"CTFWeaponBaseGrenadeProj::InitGrenade(int float)"
 			{
-				"windows"	"243"
-				"linux"		"245"
+				"windows"	"244"
+				"linux"		"246"
 			}
 			"CTFWeaponBaseGrenadeProj::Detonate"
 			{
 				"library" 	"server"
-				"windows" 	"236"
-				"linux" 	"237"
+				"windows" 	"237"
+				"linux" 	"238"
 			}
 			"CTFGrenadePipebombProjectile::VPhysicsCollision"
 			{
 				"library" 	"server"
-				"windows" 	"167"
-				"linux" 	"168"
+				"windows" 	"168"
+				"linux" 	"169"
 			}
 			"CTFProjectile_Cleaver::OnHit(CBaseEntity*)"
 			{
 				"library" 	"server"
-				"windows" 	"265"
-				"linux" 	"266"
+				"windows" 	"266"
+				"linux" 	"267"
+			}
+			"CTFSword::GetSwordSpeedMod()"
+			{
+				"library" 	"server"
+				"windows" 	"487"
+				"linux" 	"495"
+			}
+			"CTFSword::GetSwordHealthMod()"
+			{
+				"library" 	"server"
+				"windows" 	"488"
+				"linux" 	"496"
 			}
 		}
 	}

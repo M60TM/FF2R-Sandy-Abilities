@@ -61,6 +61,19 @@
 		"plugin_name"	"ff2r_standard_trait"
 	}
 	
+	"special_boss_particle"
+	{
+		"particles"
+		{
+			"1"
+			{
+				"particle"	"ghost_pumpkin"
+			}
+		}
+		
+		"plugin_name"	"ff2r_standard_trait"
+	}
+	
 	"rage_special_theme"
 	{
 		"slot"		"0"
@@ -119,15 +132,8 @@
 		"plugin_name"	"ff2r_standard_trait"
 	}
 	
-	"rage_movespeed"
+	"special_block_suicide"
 	{
-		"slot"			"0"
-		"duration"		"7.0 + (n / 10)"
-		"distance"		"300.0"
-		"self_speed"	"520.0"
-		"ally_speed"	"0.0"
-		"enemy_speed"	"0.0"
-		
 		"plugin_name"	"ff2r_standard_trait"
 	}
 */
@@ -136,6 +142,7 @@
 #include <tf2_stocks>
 #include <cfgmap>
 #include <ff2r>
+#include <tf2utils>
 #include <tf2attributes>
 
 #pragma semicolon 1
@@ -144,66 +151,99 @@
 #define DEFINDEX_UNDEFINED 65535
 
 #include <stocksoup/tf/tempents_stocks>
-#include "freak_fortress_2/formula_parser.sp"
 
-Handle SDKGetMaxHealth;
-Handle SDKRemoveAllCustomAttribute;
+enum {
+	EF_BONEMERGE			= (1<<0),	// Performs bone merge on client side
+	EF_BRIGHTLIGHT			= (1<<1),	// DLIGHT centered at entity origin
+	EF_DIMLIGHT				= (1<<2),	// player flashlight
+	EF_NOINTERP				= (1<<3),	// don't interpolate the next frame
+	EF_NOSHADOW				= (1<<4),	// Don't cast no shadow
+	EF_NODRAW				= (1<<5),	// don't draw entity
+	EF_NORECEIVESHADOW		= (1<<6),	// Don't receive no shadow
+	EF_BONEMERGE_FASTCULL	= (1<<7),	// For use with EF_BONEMERGE. If this is set, then it places this ent's origin at its
+										// parent and uses the parent's bbox + the max extents of the aiment.
+										// Otherwise, it sets up the parent's bones every frame to figure out where to place
+										// the aiment, which is inefficient because it'll setup the parent's bones even if
+										// the parent is not in the PVS.
+	EF_ITEM_BLINK			= (1<<8),	// blink an item so that the user notices it.
+	EF_PARENT_ANIMATES		= (1<<9),	// always assume that the parent entity is animating
+};
+
+enum {
+	OBS_MODE_NONE = 0,	// not in spectator mode
+	OBS_MODE_DEATHCAM,	// special mode for death cam animation
+	OBS_MODE_FREEZECAM,	// zooms to a target, and freeze-frames on them
+	OBS_MODE_FIXED,		// view from a fixed camera position
+	OBS_MODE_IN_EYE,	// follow a player in first person view
+	OBS_MODE_CHASE,		// follow a player in third person view
+	OBS_MODE_POI,		// PASSTIME point of interest - game objective, big fight, anything interesting; added in the middle of the enum due to tons of hard-coded "<ROAMING" enum compares
+	OBS_MODE_ROAMING,	// free roaming
+
+	NUM_OBSERVER_MODES,
+};
 
 int PlayersAlive[4];
 bool SpecTeam;
 
+bool SpecialDisguise[MAXPLAYERS + 1];
+float DisguiseDamage[MAXPLAYERS + 1];
+
+//int SpecialAutoRage[MAXPLAYERS + 1];
+//float SpecialAutoRageTime[MAXPLAYERS + 1];
+
 bool NoActive[MAXPLAYERS + 1] = { false, ... };
 bool BlockDropRune[MAXPLAYERS + 1];
+bool BlockSuicide[MAXPLAYERS + 1];
 
+ArrayList BlockSuicideBoss;
 ArrayList BossTimers[MAXPLAYERS + 1];
-
-float MoveSpeed[MAXPLAYERS + 1];
-float MoveSpeedDuration[MAXPLAYERS + 1];
 
 Handle PlayerOverlayTimer[MAXPLAYERS + 1] = { null, ... };
 
-ConVar CvarFriendlyFire;
+ConVar mp_friendlyfire;
+ConVar ff2_block_suicide;
+
+#include "freak_fortress_2/formula_parser.sp"
+#include "freak_fortress_2/subplugin.sp"
+//#include "ff2r_standard_trait/dhooks.sp"
+#include "ff2r_standard_trait/events.sp"
+#include "ff2r_standard_trait/sdktools.sp"
 
 public void OnPluginStart() {
-	GameData gamedata = new GameData("sdkhooks.games");
+	ff2_block_suicide = CreateConVar("ff2_block_suicide", "0", "Block suicide", 0, true, 0.0, true, 1.0);
 	
-	StartPrepSDKCall(SDKCall_Player);
-	PrepSDKCall_SetFromConf(gamedata, SDKConf_Virtual, "GetMaxHealth");
-	PrepSDKCall_SetReturnInfo(SDKType_PlainOldData, SDKPass_ByValue);
-	SDKGetMaxHealth = EndPrepSDKCall();
-	if (!SDKGetMaxHealth)
-		LogError("[Gamedata] Could not find GetMaxHealth");
+	SDKCall_Setup();
 	
-	delete gamedata;
 	
-	gamedata = new GameData("ff2r.sandy");
-	if (!gamedata)
-		SetFailState("Failed to load gamedata (ff2r.sandy).");
+	mp_friendlyfire = FindConVar("mp_friendlyfire");
 	
-	StartPrepSDKCall(SDKCall_Player);
-	PrepSDKCall_SetFromConf(gamedata, SDKConf_Signature, "CTFPlayer::RemoveAllCustomAttributes");
-	SDKRemoveAllCustomAttribute = EndPrepSDKCall();
-	if (!SDKRemoveAllCustomAttribute)
-		SetFailState("[Gamedata] Could not find CTFPlayer::RemoveAllCustomAttributes");
+	Events_OnPluginStart();
 	
-	delete gamedata;
+	BlockSuicideBoss = new ArrayList();
 	
 	AddCommandListener(Command_DropItem, "dropitem");
+	AddCommandListener(Command_KermitSewerSlide, "explode");
+	AddCommandListener(Command_KermitSewerSlide, "kill");
+	AddCommandListener(Command_Spectate, "spectate");
+	AddCommandListener(Command_JoinTeam, "jointeam");
 	
-	CvarFriendlyFire = FindConVar("mp_friendlyfire");
-	
-	HookEvent("player_death", OnPlayerDeathPre, EventHookMode_Pre);
-	HookEvent("player_death", OnPlayerDeath, EventHookMode_Post);
-	HookEvent("object_destroyed", OnObjectDestroyed, EventHookMode_Pre);
-	
+	Subplugin_PluginStart();
+}
+
+void FF2R_PluginLoaded() {
 	for (int client = 1; client <= MaxClients; client++) {
 		if (IsClientInGame(client)) {
 			BossData cfg = FF2R_GetBossData(client);
 			if (cfg) {
 				FF2R_OnBossCreated(client, cfg, false);
+				FF2R_OnBossEquipped(client, true);
 			}
 		}
 	}
+}
+
+public void OnMapStart() {
+	PrecacheEffect("ParticleEffectStop");
 }
 
 public void OnPluginEnd() {
@@ -218,163 +258,34 @@ public void OnPluginEnd() {
 	}
 }
 
+public void OnLibraryAdded(const char[] name) {
+	Subplugin_LibraryAdded(name);
+}
+
+public void OnLibraryRemoved(const char[] name) {
+	Subplugin_LibraryRemoved(name);
+}
+
 public void OnClientDisconnect(int client) {
 	delete PlayerOverlayTimer[client];
 }
 
-public Action OnPlayerDeathPre(Event event, const char[] name, bool dontBroadcast) {
-	int attacker = GetClientOfUserId(event.GetInt("attacker"));
-	if (!attacker) {
-		return Plugin_Continue;
-	}
-	
-	BossData boss = FF2R_GetBossData(attacker);
-	if (boss) {
-		AbilityData ability = boss.GetAbility("special_kill_log");
-		if (ability.IsMyPlugin()) {
-			// first, check weapon id
-			int weaponID = event.GetInt("weaponid");
-			
-			char buffer[64];
-			Format(buffer, sizeof(buffer), "weaponid.%d", weaponID);
-			ConfigData SectionID = ability.GetSection(buffer);
-			if (SectionID) {
-				SectionID.GetString("name", buffer, sizeof(buffer));
-				event.SetString("weapon_logclassname", buffer);
-				event.SetString("weapon", buffer);
-				
-				return Plugin_Changed;
-			} 
-			else { // If it doesn't exist, check weapon name
-				event.GetString("weapon", buffer, sizeof(buffer));
-				if (buffer[0]) {
-					FormatEx(buffer, sizeof(buffer), "weaponid.%s", buffer);
-					SectionID = ability.GetSection(buffer);
-					if (SectionID) {
-						SectionID.GetString("name", buffer, sizeof(buffer));
-						event.SetString("weapon_logclassname", buffer);
-						event.SetString("weapon", buffer);
-						
-						return Plugin_Changed;
-					}
-				}
-			}
-		}
-	}
-	
-	return Plugin_Continue;
-}
-
-public Action OnObjectDestroyed(Event event, const char[] name, bool dontBroadcast) {
-	int attacker = GetClientOfUserId(event.GetInt("attacker"));
-	if (!attacker) {
-		return Plugin_Continue;
-	}
-	
-	BossData boss = FF2R_GetBossData(attacker);
-	if (boss) {
-		AbilityData ability = boss.GetAbility("special_kill_log");
-		if (ability.IsMyPlugin()) {
-			// first, check weapon id
-			int weaponID = event.GetInt("weaponid");
-			
-			char buffer[64];
-			Format(buffer, sizeof(buffer), "weaponid.%d", weaponID);
-			ConfigData SectionID = ability.GetSection(buffer);
-			if (SectionID) {
-				SectionID.GetString("name", buffer, sizeof(buffer));
-				event.SetString("weapon_logclassname", buffer);
-				event.SetString("weapon", buffer);
-				
-				return Plugin_Changed;
-			} 
-			else { // If it doesn't exist, check weapon name
-				event.GetString("weapon", buffer, sizeof(buffer));
-				if (buffer[0]) {
-					FormatEx(buffer, sizeof(buffer), "weaponid.%s", buffer);
-					SectionID = ability.GetSection(buffer);
-					if (SectionID) {
-						SectionID.GetString("name", buffer, sizeof(buffer));
-						event.SetString("weapon_logclassname", buffer);
-						event.SetString("weapon", buffer);
-						
-						return Plugin_Changed;
-					}
-				}
-			}
-		}
-	}
-	
-	return Plugin_Continue;
-}
-
-public void OnPlayerDeath(Event event, const char[] name, bool dontBroadcast) {
-	int victim = GetClientOfUserId(event.GetInt("userid"));
-	int attacker = GetClientOfUserId(event.GetInt("attacker"));
-	if (victim) {
-		if (attacker < 1 || attacker > MaxClients || attacker == victim) {
-			return;
-		}
-		
-		BossData boss = FF2R_GetBossData(attacker);
-		if (boss) {
-			AbilityData ability = boss.GetAbility("special_kill_overlay");
+public void TF2_OnConditionAdded(int client, TFCond condition) {
+	if (condition == TFCond_Disguised) {
+		if (SpecialDisguise[client]) {
+			BossData boss = FF2R_GetBossData(client);
+			AbilityData ability = boss.GetAbility("special_disguise");
 			if (ability.IsMyPlugin()) {
-				if (!ability.GetBool("dead_ringer") || !(event.GetInt("death_flags") & TF_DEATHFLAG_DEADRINGER)) {
-					char file[128];
-					ability.GetString("path", file, sizeof(file));
+				if (DisguiseDamage[client] < 0.0)
+					DisguiseDamage[client] = 0.0;
 					
-					SetVariantString(file);
-					AcceptEntityInput(victim, "SetScriptOverlayMaterial", victim, victim);
-					
-					delete PlayerOverlayTimer[victim];
-					PlayerOverlayTimer[victim] = CreateTimer(ability.GetFloat("duration", 3.25), Timer_RemovePlayerOverlay, GetClientUserId(victim), TIMER_FLAG_NO_MAPCHANGE);
-				}
-			}
-			
-			ability = boss.GetAbility("special_rage_on_kill");
-			if (ability.IsMyPlugin()) {
-				if (boss.RageDamage > 0.0) {
-					float amount = GetFormula(ability, "amount", TotalPlayersAliveEnemy(CvarFriendlyFire.BoolValue ? -1 : GetClientTeam(attacker)), 0.0);
-					
-					char slot[8];
-					ability.GetString("slot", slot, sizeof(slot), "0");
-					
-					float rage = GetBossCharge(boss, slot);
-					float maxrage = boss.RageMax;
-					if (rage < maxrage) {
-						rage += amount;
-						if (rage > maxrage) {
-							FF2R_EmitBossSoundToAll("sound_full_rage", attacker, _, attacker, SNDCHAN_AUTO, SNDLEVEL_AIRCRAFT, _, 2.0);
-							rage = maxrage;
-						}
-						else if (rage < 0.0) {
-							rage = 0.0;
-						}
-						
-						SetBossCharge(boss, slot, rage);
-					}
-				}
-			}
-			
-			ability = boss.GetAbility("special_heal_on_kill");
-			if (ability.IsMyPlugin() && ApplyHealOnKill(attacker, victim, ability)) {
-				FF2R_UpdateBossAttributes(attacker);
-			}
-			
-			if (event.GetInt("customkill") == TF_CUSTOM_BACKSTAB) {
-				ability = boss.GetAbility("special_disguise_on_backstab");
-				if (ability.IsMyPlugin()) {
-					TFTeam team = TF2_GetClientTeam(victim);
-					TFClassType classType = TF2_GetPlayerClass(victim);
-					TF2_DisguisePlayer(attacker, team, classType, victim);
-				}
+				DisguiseDamage[client] += ability.GetFloat("damage", 300.0);
 			}
 		}
 	}
 }
 
-public Action Command_DropItem(int client, const char[] command, int argc) {
+Action Command_DropItem(int client, const char[] command, int argc) {
 	if (IsClientInGame(client)) {
 		if (BlockDropRune[client]) {
 			return Plugin_Handled;
@@ -383,19 +294,55 @@ public Action Command_DropItem(int client, const char[] command, int argc) {
 	return Plugin_Continue;
 }
 
+Action Command_KermitSewerSlide(int client, const char[] command, int args) {
+	if (ff2_block_suicide.BoolValue && GameRules_GetRoundState() != RoundState_TeamWin)
+		return Plugin_Handled;
+	
+	return Plugin_Continue;
+}
+
+Action Command_Spectate(int client, const char[] command, int args) {
+	if (ff2_block_suicide.BoolValue && GameRules_GetRoundState() != RoundState_TeamWin)
+		return Plugin_Handled;
+	
+	return Plugin_Continue;
+}
+
+Action Command_JoinTeam(int client, const char[] command, int args) {
+	char buffer[10];
+	GetCmdArg(1, buffer, sizeof(buffer));
+	if (StrEqual(buffer, "spectate", false) && ff2_block_suicide.BoolValue && GameRules_GetRoundState() != RoundState_TeamWin) {
+		return Plugin_Handled;
+	}
+	
+	return Plugin_Continue;
+}
+
 public void OnEntityCreated(int entity, const char[] classname) {
 	if (StrEqual(classname, "item_powerup_rune"))
 		AcceptEntityInput(entity, "Kill");
 }
 
-public void OnPreThink(int client) {
-	if (GetGameTime() > MoveSpeedDuration[client]) {
-		TF2_AddCondition(client, TFCond_SpeedBuffAlly, 0.001);
-		SDKUnhook(client, SDKHook_PreThink, OnPreThink);
-		return;
+public void OnTakeDamagePost(int victim, int attacker, int inflictor, float damage, int damagetype, int weapon, const float damageForce[3], const float damagePosition[3], int damagecustom)
+{
+	if(0 < attacker <= MaxClients && IsClientInGame(attacker) && GetClientTeam(victim) != GetClientTeam(attacker))
+	{
+		if(SpecialDisguise[victim])
+		{
+			BossData boss = FF2R_GetBossData(victim);
+			if (boss && boss.GetAbility("special_disguise")) {
+				DisguiseDamage[victim] -= damage;
+				if (DisguiseDamage[victim] <= 0.0)
+					TF2_RemoveCondition(victim, TFCond_Disguised);
+				
+				return;
+			}
+			
+			SpecialDisguise[victim] = false;
+		}
+		
+		SDKUnhook(victim, SDKHook_OnTakeDamagePost, OnTakeDamagePost);
 	}
-	
-	SetEntPropFloat(client, Prop_Data, "m_flMaxspeed", MoveSpeed[client]);
 }
 
 public void FF2R_OnBossCreated(int client, BossData cfg, bool setup) {
@@ -414,12 +361,51 @@ public void FF2R_OnBossCreated(int client, BossData cfg, bool setup) {
 				BlockDropRune[client] = true;
 		}
 	}
+	
+	if(!setup || FF2R_GetGamemodeType() != 2) {
+		AbilityData ability;
+		if (!SpecialDisguise[client]) {
+			ability = cfg.GetAbility("special_disguise");
+			if (ability.IsMyPlugin()) {
+				SpecialDisguise[client] = true;
+				SDKHook(client, SDKHook_OnTakeDamagePost, OnTakeDamagePost);
+			}
+		}
+		
+		if (!BlockSuicide[client]) {
+			ability = cfg.GetAbility("special_block_suicide");
+			if (ability.IsMyPlugin()) {
+				BlockSuicide[client] = true;
+				if (!BlockSuicideBoss.Length)
+					ff2_block_suicide.BoolValue = true;
+				
+				BlockSuicideBoss.Push(client);
+			}
+		}
+		/*
+		if (!SpecialAutoRage[client]) {
+			ability = cfg.GetAbility("special_generate_rage");
+			if (ability.IsMyPlugin()) {
+				SpecialAutoRage[client] = 1;
+				SDKHook(client, SDKHook_OnTakeDamagePost, OnTakeDamagePost);
+			}
+		}
+		*/
+	}
 }
 
 public void FF2R_OnBossEquipped(int client, bool weapons) {
-	AbilityData ability = FF2R_GetBossData(client).GetAbility("special_boss_attribute");
-	if (ability.IsMyPlugin()) {
-		ApplyBossAttributes(client, ability);
+	if (weapons) {
+		BossData boss = FF2R_GetBossData(client);
+		AbilityData ability = boss.GetAbility("special_boss_attribute");
+		if (ability.IsMyPlugin()) {
+			ApplyBossAttributes(client, ability);
+		}
+		
+		ability = boss.GetAbility("special_boss_particle");
+		if (ability.IsMyPlugin()) {
+			ApplyBossParticle(client, ability);
+		}
 	}
 }
 
@@ -432,11 +418,25 @@ public void FF2R_OnBossRemoved(int client) {
 	delete BossTimers[client];
 	
 	BlockDropRune[client] = false;
+	SpecialDisguise[client] = false;
+	
+	if (BlockSuicide[client]) {
+		int index = BlockSuicideBoss.FindValue(client);
+		if (index != -1) {
+			BlockSuicideBoss.Erase(index);
+			if (!BlockSuicideBoss.Length)
+				ff2_block_suicide.BoolValue = false;
+		}
+		
+		BlockSuicide[client] = false;
+	}
+	
+	ClearBossParticle(client);
 	
 	// If you death, game should be call this function. But you changed boss, custom attribute is still remaining.
 	// So here is fix for that.
 	if (IsPlayerAlive(client)) {
-		SDKCall(SDKRemoveAllCustomAttribute, client);
+		SDKCall_RemoveAllCustomAttribute(client);
 	}
 }
 
@@ -451,7 +451,10 @@ public void FF2R_OnAbility(int client, const char[] ability, AbilityData cfg) {
 		FF2R_EmitBossSoundToAll("sound_special_theme", client, required);
 	}
 	else if (!StrContains(ability, "rage_boss_attribute", false)) {
-		ApplyBossAttributes(client, cfg);
+		DataPack pack;
+		BossTimers[client].Push(CreateDataTimer(GetFormula(cfg, "delay", TotalPlayersAliveEnemy(mp_friendlyfire.BoolValue ? -1 : GetClientTeam(client))), Timer_RageBossAttribute, pack));
+		pack.WriteCell(GetClientUserId(client));
+		pack.WriteString(ability);
 	}
 	else if (!StrContains(ability, "rage_bad_effect", false)) {
 		if (cfg.GetBool("jarate", true)) {
@@ -486,11 +489,39 @@ public void FF2R_OnAbility(int client, const char[] ability, AbilityData cfg) {
 			}
 		}
 	}
-	else if (!StrContains(ability, "rage_movespeed", false)) {
-		DataPack pack;
-		BossTimers[client].Push(CreateDataTimer(GetFormula(cfg, "delay", TotalPlayersAliveEnemy(CvarFriendlyFire.BoolValue ? -1 : GetClientTeam(client))), Timer_RageMoveSpeed, pack, TIMER_FLAG_NO_MAPCHANGE));
-		pack.WriteCell(GetClientUserId(client));
-		pack.WriteString(ability);
+	else if (!StrContains(ability, "rage_give_ammo", false)) {
+		int ammotype = cfg.GetInt("ammotype", 1);
+		if (ammotype >= 0) {
+			int ammo = RoundFloat(GetFormula(cfg, "ammo", TotalPlayersAliveEnemy(mp_friendlyfire.BoolValue ? -1 : GetClientTeam(client))));
+			int max = RoundFloat(GetFormula(cfg, "max", TotalPlayersAliveEnemy(mp_friendlyfire.BoolValue ? -1 : GetClientTeam(client))));
+			if (max >= 0 && ammo > max) {
+				ammo = max;
+			}
+			
+			if (ammo > 0) {
+				SetEntProp(client, Prop_Data, "m_iAmmo", ammo, _, ammotype);
+			}
+		}
+	}
+	else if (!StrContains(ability, "rage_give_clip", false)) {
+		int slot = cfg.GetInt("loadout", 0);
+		int weapon = GetPlayerWeaponSlot(client, slot);
+		if (IsValidEntity(weapon)) {
+			int clip = 0;
+			if (cfg.GetBool("percent", false)) {
+				float flPercent = GetFormula(cfg, "clip", TotalPlayersAliveEnemy(mp_friendlyfire.BoolValue ? -1 : GetClientTeam(client)), 1.0);
+				clip = RoundFloat(float(TF2Util_GetWeaponMaxClip(weapon)) * flPercent); 
+			}
+			else {
+				clip = RoundFloat(GetFormula(cfg, "clip", TotalPlayersAliveEnemy(mp_friendlyfire.BoolValue ? -1 : GetClientTeam(client))));
+			}
+			
+			if (clip >= 0)
+				SetEntProp(weapon, Prop_Data, "m_iClip1", clip);
+		}
+	}
+	else if (!StrContains(ability, "rage_self_heal", false)) {
+		Rage_SelfHeal(client, cfg);
 	}
 }
 
@@ -513,6 +544,28 @@ public void FF2R_OnBossModifier(int client, ConfigData cfg) {
 	}
 }
 
+void Rage_SelfHeal(int client, ConfigData cfg) {
+	int amount = 0;
+	if (cfg.GetBool("amount", false)) {
+		amount = RoundFloat(GetFormula(cfg, "gain", TotalPlayersAliveEnemy(mp_friendlyfire.BoolValue ? -1 : GetClientTeam(client)), 0.0));
+	}
+	else {
+		amount = RoundFloat(SDKCall_GetClientMaxHealth(client) * GetFormula(cfg, "percentage", TotalPlayersAliveEnemy(mp_friendlyfire.BoolValue ? -1 : GetClientTeam(client)), 0.0));
+	}
+	
+	if (amount > 0) {
+		int health = Min(GetClientHealth(client) + amount, SDKCall_GetClientMaxHealth(client));
+		SetEntityHealth(client, health);
+		
+		Event event = CreateEvent("player_healonhit", true);
+	
+		event.SetInt("entindex", client);
+		event.SetInt("amount", amount);
+		
+		event.Fire();
+	}
+}
+
 bool ApplyHealOnKill(int client, int victim, ConfigData cfg) {
 	if (cfg.GetBool("milk") && !TF2_IsPlayerInCondition(victim, TFCond_Milked)) {
 		return false;
@@ -521,18 +574,18 @@ bool ApplyHealOnKill(int client, int victim, ConfigData cfg) {
 	int amount = 0;
 	switch (cfg.GetInt("type")) {
 		case 1: {
-			amount = RoundFloat(GetFormula(cfg, "gain", TotalPlayersAliveEnemy(CvarFriendlyFire.BoolValue ? -1 : GetClientTeam(client)), 0.0));
+			amount = RoundFloat(GetFormula(cfg, "gain", TotalPlayersAliveEnemy(mp_friendlyfire.BoolValue ? -1 : GetClientTeam(client)), 0.0));
 		}
 		case 2: {
-			amount = RoundFloat(GetClientMaxHealth(client) * cfg.GetFloat("percentage"));
+			amount = RoundFloat(SDKCall_GetClientMaxHealth(client) * cfg.GetFloat("percentage"));
 		}
 		default: {
-			amount = RoundFloat(GetClientMaxHealth(victim) * cfg.GetFloat("multiplier", 1.0));
+			amount = RoundFloat(SDKCall_GetClientMaxHealth(victim) * cfg.GetFloat("multiplier", 1.0));
 		}
 	}
 	
 	if (amount > 0) {
-		int health = Min(GetClientHealth(client) + amount, GetClientMaxHealth(client));
+		int health = Min(GetClientHealth(client) + amount, SDKCall_GetClientMaxHealth(client));
 		SetEntityHealth(client, health);
 		
 		Event event = CreateEvent("player_healonhit", true);
@@ -546,6 +599,30 @@ bool ApplyHealOnKill(int client, int victim, ConfigData cfg) {
 	return true;
 }
 
+Action Timer_RageBossAttribute(Handle timer, DataPack pack) {
+	pack.Reset();
+	int client = GetClientOfUserId(pack.ReadCell());
+
+	if (!client)
+		return Plugin_Handled;
+	
+	BossTimers[client].Erase(BossTimers[client].FindValue(timer));
+	
+	char buffer[64];
+	pack.ReadString(buffer, sizeof(buffer));
+	
+	BossData boss = FF2R_GetBossData(client);
+	AbilityData cfg = boss.GetAbility(buffer);
+	if (cfg.IsMyPlugin()) {
+		if (cfg.GetBool("reset", false))
+			SDKCall_RemoveAllCustomAttribute(client);
+		
+		ApplyBossAttributes(client, cfg);
+	}
+	
+	return Plugin_Continue;
+}
+
 void ApplyBossAttributes(int client, ConfigData cfg) {
 	ConfigData cfgAttribute = cfg.GetSection("attributes");
 	StringMapSnapshot snap = cfgAttribute.Snapshot();
@@ -553,7 +630,7 @@ void ApplyBossAttributes(int client, ConfigData cfg) {
 	PackVal attributeValue;
 	
 	int team = GetClientTeam(client);
-	int alive = TotalPlayersAliveEnemy(CvarFriendlyFire.BoolValue ? -1 : team);
+	int alive = TotalPlayersAliveEnemy(mp_friendlyfire.BoolValue ? -1 : team);
 	
 	int entries = snap.Length;
 	char buffer[2][64];
@@ -582,72 +659,156 @@ void ApplyBossAttributes(int client, ConfigData cfg) {
 	delete snap;
 }
 
-public Action Timer_RageMoveSpeed(Handle timer, DataPack pack) {
-	pack.Reset();
-	int client = GetClientOfUserId(pack.ReadCell());
+void ApplyBossParticle(int client, ConfigData cfg) {
+	ConfigData cfgParticle = cfg.GetSection("particles");
+	StringMapSnapshot snap = cfgParticle.Snapshot();
+	
+	int entries = snap.Length;
+	if (entries > 0) {
+		char model[PLATFORM_MAX_PATH];
+		GetClientModel(client, model, sizeof(model));
+		
+		int prop = CreateEntityByName("tf_taunt_prop");
+		DispatchSpawn(prop);
+		ActivateEntity(prop);
+		SetEntityModel(prop, model);
+		
+		SetEntityRenderColor(prop, 0, 0, 0, 0);
+		SetEntityRenderMode(prop, RENDER_TRANSALPHA);
 
-	if (!client)
-		return Plugin_Handled;
-	
-	BossTimers[client].Erase(BossTimers[client].FindValue(timer));
-	
-	char buffer[64];
-	pack.ReadString(buffer, sizeof(buffer));
-	
-	BossData boss = FF2R_GetBossData(client);
-	AbilityData cfg = boss.GetAbility(buffer);
-	if (cfg.IsMyPlugin()) {
-		int team = GetClientTeam(client);
-		float duration = GetFormula(cfg, "duration", TotalPlayersAliveEnemy(CvarFriendlyFire.BoolValue ? -1 : team));
-		float gameTime = GetGameTime();
+		SetEntProp(prop, Prop_Send, "m_fEffects", GetEntProp(prop, Prop_Send, "m_fEffects")|EF_BONEMERGE|EF_NOSHADOW|EF_NORECEIVESHADOW);
+		SetEntPropEnt(prop, Prop_Data, "m_hEffectEntity", client);
+
+		SetVariantString("!activator");
+		AcceptEntityInput(prop, "SetParent", client);
 		
-		float mySpeed = cfg.GetFloat("self_speed", 520.0);
-		if (mySpeed > 0.0) {
-			MoveSpeed[client] = mySpeed;
-			MoveSpeedDuration[client] = gameTime + duration;
-			SDKHook(client, SDKHook_PreThink, OnPreThink);
-		}
-		
-		float pos1[3], pos2[3];
-		GetClientEyePosition(client, pos1);
-		
-		float distance = cfg.GetFloat("distance", 300.0);
-		distance = distance * distance;
-		
-		float allySpeed = cfg.GetFloat("ally_speed", 0.0);
-		float enemySpeed = cfg.GetFloat("enemy_speed", 0.0);
-		if (allySpeed > 0.0 || enemySpeed > 0.0) {
-			for (int target = 1; target <= MaxClients; target++) {
-				if (target == client || !IsClientInGame(target) || !IsPlayerAlive(target)) {
+		for (int i; i < entries; i++) {
+			int length = snap.KeyBufferSize(i) + 1;
+			char[] key = new char[length];
+			snap.GetKey(i, key, length);
+			
+			ConfigData val = cfgParticle.GetSection(key);
+			if (val) {
+				char particle[64];
+				if (!val.GetString("particle", particle, sizeof(particle)))
 					continue;
-				}
 				
-				GetClientEyePosition(target, pos2);
-				if (GetVectorDistance(pos1, pos2, true) > distance) {
-					continue;
-				}
+				ParticleAttachment_t attachtype = view_as<ParticleAttachment_t>(val.GetInt("attachment_type", 6));
 				
-				if (team == GetClientTeam(target)) {
-					if (allySpeed <= 0.0) {
-						continue;
+				char point[64];
+				if (val.GetString("attachment_point", point, sizeof(point))) {
+					int attachpoint = LookupEntityAttachment(client, point);
+					if (attachpoint) {
+						TE_SetupTFParticleEffect(particle, NULL_VECTOR, _, _, prop, attachtype, attachpoint, false);
+						TE_SendToAll(0.0);
 					}
-					
-					MoveSpeed[target] = allySpeed;
-					MoveSpeedDuration[client] = gameTime + duration;
-					SDKHook(target, SDKHook_PreThink, OnPreThink);
 				}
 				else {
-					if (enemySpeed <= 0.0) {
-						continue;
-					}
-					
-					MoveSpeed[target] = enemySpeed;
-					MoveSpeedDuration[client] = gameTime + duration;
-					SDKHook(target, SDKHook_PreThink, OnPreThink);
+					TE_SetupTFParticleEffect(particle, NULL_VECTOR, _, _, prop, attachtype, -1, false);
+					TE_SendToAll(0.0);
 				}
 			}
 		}
+		
+		SetEdictFlags(prop, GetEdictFlags(prop) | FL_EDICT_ALWAYS);
+		CreateTimer(0.2, Timer_ApplySetTransmit, prop, TIMER_FLAG_NO_MAPCHANGE);
 	}
+	
+	delete snap;
+}
+
+/*
+void ApplyBossParticle(int client, ConfigData cfg) {
+	ConfigData cfgParticle = cfg.GetSection("particles");
+	StringMapSnapshot snap = cfgParticle.Snapshot();
+	
+	int entries = snap.Length;
+	for (int i; i < entries; i++) {
+		int length = snap.KeyBufferSize(i) + 1;
+		char[] key = new char[length];
+		snap.GetKey(i, key, length);
+		
+		ConfigData val = cfgParticle.GetSection(key);
+		if (val) {
+			char particle[64];
+			if (!val.GetString("particle", particle, sizeof(particle)))
+				continue;
+			
+			//PrintToChatAll("%s", particle);
+			
+			int entity = TF2_AttachParticle(particle, client);
+			SetEdictFlags(entity, GetEdictFlags(entity) | FL_EDICT_ALWAYS);
+			CreateTimer(0.2, Timer_ApplySetTransmit, entity, TIMER_FLAG_NO_MAPCHANGE);
+		}
+	}
+	
+	delete snap;
+}
+*/
+
+void ClearBossParticle(int client) {
+	/*
+	int entity = INVALID_ENT_REFERENCE;
+	while ((entity = FindEntityByClassname(entity, "info_particle_system")) != INVALID_ENT_REFERENCE) {
+		if (GetEntPropEnt(entity, Prop_Data, "m_pParent") != client)
+			continue;
+		
+		SetVariantString("ParticleEffectStop");
+		AcceptEntityInput(entity, "DispatchEffect");
+		AcceptEntityInput(entity, "ClearParent");
+		
+		// Some particles don't get removed properly, teleport far away then delete it
+		static const float outsidePos[3] = {8192.0, 8192.0, 8192.0};
+		TeleportEntity(entity, outsidePos);
+		
+		// Give enough time for effect to fade out before getting destroyed
+		SetVariantString("OnUser1 !self:Kill::0.5:1");
+		AcceptEntityInput(entity, "AddOutput");
+		AcceptEntityInput(entity, "FireUser1");
+	}
+	*/
+	int entity = INVALID_ENT_REFERENCE;
+	while ((entity = FindEntityByClassname(entity, "tf_taunt_prop")) != INVALID_ENT_REFERENCE) {
+		if (GetEntPropEnt(entity, Prop_Data, "m_hParent") == client) {
+			SetVariantString("ParticleEffectStop");
+			AcceptEntityInput(entity, "DispatchEffect");
+			AcceptEntityInput(entity, "ClearParent");
+			
+			static const float outsidePos[3] = {8192.0, 8192.0, 8192.0};
+			TeleportEntity(entity, outsidePos);
+			
+			SetVariantString("OnUser1 !self:Kill::0.5:1");
+			AcceptEntityInput(entity, "AddOutput");
+			AcceptEntityInput(entity, "FireUser1");
+		}
+	}
+}
+
+Action Timer_ApplySetTransmit(Handle timer, int entity) {
+	// Entity reference here
+	if (IsValidEntity(entity)) {
+		SetEdictFlags(entity, GetEdictFlags(entity) & ~FL_EDICT_ALWAYS);
+		SDKHook(entity, SDKHook_SetTransmit, AttachEnt_SetTransmit);
+	}
+	
+	return Plugin_Continue;
+}
+
+Action AttachEnt_SetTransmit(int attachEnt, int client) {
+	int owner = GetEntPropEnt(attachEnt, Prop_Data, "m_pParent");
+	if (owner == INVALID_ENT_REFERENCE)
+		return Plugin_Stop;
+	
+	if (owner != client) {
+		if (GetEntPropEnt(client, Prop_Send, "m_hObserverTarget") == owner && GetEntProp(client, Prop_Send, "m_iObserverMode") == OBS_MODE_IN_EYE)
+		    return Plugin_Stop;
+	}
+	else if (!TF2_IsPlayerInCondition(owner, TFCond_Taunting) && !GetEntProp(owner, Prop_Send, "m_nForceTauntCam")) {
+		return Plugin_Stop;
+	}
+
+	if (TF2_IsPlayerInCondition(owner, TFCond_Cloaked) || TF2_IsPlayerInCondition(owner, TFCond_Disguised) || TF2_IsPlayerInCondition(owner, TFCond_Stealthed))
+		return Plugin_Stop;
 	
 	return Plugin_Continue;
 }
@@ -695,9 +856,43 @@ int TotalPlayersAliveEnemy(int team = -1) {
 	return amount;
 }
 
-int GetClientMaxHealth(int client) {
-	return SDKGetMaxHealth ? SDKCall(SDKGetMaxHealth, client) : GetEntProp(client, Prop_Data, "m_iMaxHealth");
+stock void PrecacheEffect(const char[] sEffectName) {
+	static int table = INVALID_STRING_TABLE;
+	if (table == INVALID_STRING_TABLE) {
+		table = FindStringTable("EffectDispatch");
+	}
+	
+	bool save = LockStringTables(false);
+	AddToStringTable(table, sEffectName);
+	LockStringTables(save);
 }
+
+/*
+stock int TF2_AttachParticle(const char[] particle, int client) {
+	char model[PLATFORM_MAX_PATH];
+	GetClientModel(client, model, sizeof(model));
+	
+	int prop = CreateEntityByName("tf_taunt_prop");
+	DispatchSpawn(prop);
+	ActivateEntity(prop);
+	SetEntityModel(prop, model);
+	
+	SetEntityRenderColor(prop, 0, 0, 0, 0);
+	SetEntityRenderMode(prop, RENDER_TRANSALPHA);
+
+	SetEntProp(prop, Prop_Send, "m_fEffects", GetEntProp(prop, Prop_Send, "m_fEffects")|EF_BONEMERGE|EF_NOSHADOW|EF_NORECEIVESHADOW);
+	SetEntPropEnt(prop, Prop_Data, "m_hEffectEntity", client);
+
+	SetVariantString("!activator");
+	AcceptEntityInput(prop, "SetParent", client);
+	
+	TE_SetupTFParticleEffect(particle, NULL_VECTOR, _, _, prop, PATTACH_ROOTBONE_FOLLOW, -1, false);
+	TE_SendToAll(0.0);
+	
+	//Return ref of entity
+	return EntIndexToEntRef(prop);
+}
+*/
 
 stock any Min(any a, any b) {
 	return a > b ? b : a;

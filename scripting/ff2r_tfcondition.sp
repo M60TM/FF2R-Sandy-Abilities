@@ -111,7 +111,7 @@ public void FF2R_OnBossCreated(int client, BossData cfg, bool setup) {
 	if (!setup || FF2R_GetGamemodeType() != 2) {
 		AbilityData ability = cfg.GetAbility("special_tfcondition");
 		if (ability.IsMyPlugin()) {
-			ApplyTFConditionData(client, cfg, "condition", ability.GetBool("additive", true));
+			ApplyTFConditionData(client, ability, "condition", ability.GetBool("additive", true));
 		}
 	}
 }
@@ -206,6 +206,20 @@ public Action Timer_RageTFCondition(Handle timer, DataPack pack) {
 	
 	return Plugin_Continue;
 }
+
+/*
+void ApplyTFConditionString(int client, const char[] condition, bool additive) {
+	char conds[16][16];
+	int count = ExplodeString(condition, ";", conds, sizeof(conds), sizeof(conds[]));
+	if (count > 0) {
+		for (int i = 0; i < count; i += 2) {
+			TFCond cond = view_as<TFCond>(StringToInt(conds[i]));
+			float duration = ParseFormula(conds[i + 1], TotalPlayersAliveEnemy(CvarFriendlyFire.BoolValue ? -1 : GetClientTeam(client)));
+			ApplyTFCondition(client, cond, duration, additive);
+		}
+	}
+}
+*/
 
 void ApplyTFConditionData(int client, ConfigData cfg, const char[] key, bool additive) {
 	switch (cfg.GetKeyValType(key)) {
