@@ -1,0 +1,19 @@
+"Phrases"
+{
+	"Full Spell Charge"
+	{
+		"en"	"Spell Charge is Full"
+		"ko"	"마법이 완충됨"
+	}
+	"Rage Spell Charge"
+	{
+		"en"	"Rage Spell is still available"
+		"ko"	"분노 마법이 아직 남아있음"
+	}
+	"Spell Charge Cooltime"
+	{
+		"#format"	"{1:.1f}"
+		"en"	"Spell will be recharged in {1} second(s)"
+		"ko"	"{1}초 뒤 마법 재충전"
+	}
+}
