@@ -1,0 +1,310 @@
+"Games"
+{
+	"tf"
+	{
+		"Functions"
+		{
+			"CTFBuffItem::BlowHorn"
+			{
+				"signature"		"CTFBuffItem::BlowHorn"
+				"callconv"		"thiscall"
+				"return"		"void"
+				"this"			"entity"
+			}
+			"CBaseEntity::PhysicsSimulate"
+			{
+				"offset"		"CBaseEntity::PhysicsSimulate"
+				"hooktype"		"entity"
+				"return"		"void"
+				"this"			"entity"
+			}
+			"CTFPlayer::GiveAmmo"
+			{
+				"signature"	"CTFPlayer::GiveAmmo"
+				"callconv"	"thiscall"
+				"return"	"int"
+				"this"		"entity"
+				"arguments"
+				{
+					"iCount"
+					{
+						"type"	"int"
+					}
+					"iAmmoIndex"
+					{
+						"type"	"int"
+					}
+					"bSuppressSound"
+					{
+						"type"	"bool"
+					}
+					"eAmmoSource"
+					{
+						"type"	"int"
+					}
+				}
+			}
+			"CTFBaseRocket::GetDamageType"
+			{
+				"offset"	"CTFBaseRocket::GetDamageType"
+				"hooktype"	"entity"
+				"return"	"int"
+				"this"		"entity"
+			}
+			"CTFRocketLauncher::FireProjectile"
+			{
+				"signature"		"CTFRocketLauncher::FireProjectile"
+				"callconv"		"thiscall"
+				"return"		"cbaseentity"
+				"this"			"entity"
+				"arguments"
+				{
+					"player"
+					{
+						"type"	"cbaseentity"
+					}
+				}
+			}
+			"CTFPlayerShared::UpdateChargeMeter"
+			{
+				"signature"		"CTFPlayerShared::UpdateChargeMeter"
+				"callconv"		"thiscall"
+				"return"		"void"
+				"this"			"address"
+			}
+			"CTFPlayerShared::UpdateChargeMeter.part.0"
+			{
+				"signature"		"CTFPlayerShared::UpdateChargeMeter.part.0"
+				"callconv"		"cdecl"
+				"return"		"void"
+				"arguments"
+				{
+					"this"
+					{
+						"type"	"objectptr"
+						"register"	"eax"
+					}
+				}
+			}
+			"CTFPlayer::MaybeDrawRailgunBeam"
+			{
+				"signature" "CTFPlayer::MaybeDrawRailgunBeam"
+				"callconv" "thiscall"
+				"return" "void"
+				"this" "entity"
+				"arguments"
+				{
+					"pFilter"
+					{
+						"type" "objectptr"
+					}
+					"pWeapon"
+					{
+						"type" "cbaseentity"
+					}
+					"vStartPos"
+					{
+						"type" "vectorptr"
+					}
+					"vEndPos"
+					{
+						"type" "vectorptr"
+					}
+				}
+			}
+			"CTFWeaponBase::GetPenetrateType"
+			{
+				"offset"		"CTFWeaponBase::GetPenetrateType"
+				"hooktype"		"entity"
+				"return"		"int"
+				"this"			"entity"
+			}
+			"CTFWearableDemoShield::DoSpecialAction"
+			{
+				"signature"		"CTFWearableDemoShield::DoSpecialAction"
+				"callconv"		"thiscall"
+				"return"		"void"
+				"this"			"entity"
+				"arguments"
+				{
+					"pPlayer"
+					{
+						"type" "cbaseentity"
+					}
+				}
+			}
+			"CTFWeaponBase::CanFireCriticalShot"
+			{
+				"offset"	"CTFWeaponBase::CanFireCriticalShot"
+				"hooktype"	"entity"
+				"return"	"bool"
+				"this"		"entity"
+				"arguments"
+				{
+					"bIsHeadshot"
+					{
+						"type" "bool"
+					}
+					"pTarget"
+					{
+						"type" "cbaseentity"
+					}
+				}
+			}
+			"CTFWeaponBase::GetDamageType"
+			{
+				"offset"	"CTFWeaponBase::GetDamageType"
+				"hooktype"	"entity"
+				"return"	"int"
+				"this"		"entity"
+			}
+			"CTFProjectile_HealingBolt::CanHeadshot"
+			{
+				"signature"	"CTFProjectile_HealingBolt::CanHeadshot"
+				"callconv"	"thiscall"
+				"return"	"bool"
+				"this"		"entity"
+			}
+			"CTFWeaponBase::AllowTaunts"
+			{
+				"offset"	"CTFWeaponBase::AllowTaunts"
+				"hooktype"	"entity"
+				"return"	"bool"
+				"this"		"entity"
+			}
+			"CTFProjectile_MechanicalArmOrb::ExplodeAndRemove"
+			{
+				"signature"	"CTFProjectile_MechanicalArmOrb::ExplodeAndRemove"
+				"callconv"	"thiscall"
+				"return"	"void"
+				"this"		"entity"
+			}
+		}
+		
+		"Signatures"
+		{
+			"CTFBuffItem::BlowHorn"
+			{
+				"library"	"server"
+				"linux"		"@_ZN11CTFBuffItem8BlowHornEv"
+			}
+			"CTFPlayer::GiveAmmo"
+			{
+				"library"	"server"
+				"linux"		"@_ZN9CTFPlayer8GiveAmmoEiib11EAmmoSource"
+				"windows"	"\x55\x8B\xEC\x53\x56\x8B\x75\x08\x8B\xD9\x57\x8B\x7D\x0C\x89\x75\x0C"
+			}
+			"CTFWearable::AddHiddenBodyGroup"
+			{
+				"library"	"server"
+				"linux"		"@_ZN11CTFWearable18AddHiddenBodyGroupEPKc"
+			}
+			"CTFPlayerShared::RecalculatePlayerBodygroups"
+			{
+				"library"	"server"
+				"linux"		"@_ZN15CTFPlayerShared27RecalculatePlayerBodygroupsEv"
+			}
+			"CTFPlayer::SetOffHandWeapon"
+			{
+				"library"	"server"
+				"linux"		"@_ZN9CTFPlayer16SetOffHandWeaponEP13CTFWeaponBase"
+			}
+			"CTFPlayer::HolsterOffHandWeapon"
+			{
+				"library"	"server"
+				"linux"		"@_ZN9CTFPlayer20HolsterOffHandWeaponEv"
+			}
+			"CTFRocketLauncher::FireProjectile"
+			{
+				"library"	"server"
+				"linux"		"@_ZN17CTFRocketLauncher14FireProjectileEP9CTFPlayer"
+			}
+			"CTFPlayerShared::UpdateChargeMeter"
+			{
+				"library"	"server"
+				"windows"	""
+			}
+			"CTFPlayerShared::UpdateChargeMeter.part.0"
+			{
+				"library"	"server"
+				"linux"		"@_ZN15CTFPlayerShared17UpdateChargeMeterEv.part.0"
+			}
+			"CTFPlayer::MaybeDrawRailgunBeam"
+			{
+				"library"	"server"
+				"linux"		"@_ZN9CTFPlayer20MaybeDrawRailgunBeamEP16IRecipientFilterP13CTFWeaponBaseRK6VectorS6_"
+			}
+			"CTFWearableDemoShield::DoSpecialAction"
+			{
+				"library"	"server"
+				"linux"		"@_ZN21CTFWearableDemoShield15DoSpecialActionEP9CTFPlayer"
+			}
+			"CTFProjectile_HealingBolt::CanHeadshot"
+			{
+				"linux"		"@_ZN25CTFProjectile_HealingBolt11CanHeadshotEv"
+				"windows"	"\xBA\x01\x00\x00\x00\x0F\x45\xCA\x89\x4D\xF4"
+			}
+			"CTFProjectile_MechanicalArmOrb::ExplodeAndRemove"
+			{
+				"linux"		"@_ZN30CTFProjectile_MechanicalArmOrb16ExplodeAndRemoveEv"
+			}
+		}
+		
+		"Offsets"
+		{
+			"CBaseEntity::GetEnemy()"
+			{
+				"windows"	"102"
+				"linux"		"102"
+			}
+			"CBaseEntity::PhysicsSimulate"
+			{
+				"library"	"server"
+				"linux"		"111"
+				"windows"	"110"
+			}
+			"CBaseViewModel::SetWeaponModel"
+			{
+				"library"	"server"
+				"linux"		"229"
+				"windows"	"228"
+			}
+			"CTFBaseRocket::GetDamageType"
+			{
+				"library"	"server"
+				"linux"		"243"
+				"windows"	"242"
+			}
+			"CTFWeaponBase::GetPenetrateType"
+			{
+				"library"	"server"
+				"linux"		"410"
+				"windows"	"403"
+			}
+			"CTFLunchBox::SetBroken(bool)"
+			{
+				"library"	"server"
+				"linux"		"461"
+				"windows"	"454"
+			}
+			"CTFWeaponBase::CanFireCriticalShot"
+			{
+				"library"	"server"
+				"linux"		"446"
+				"windows"	"439"
+			}
+			"CTFWeaponBase::GetDamageType"
+			{
+				"library"	"server"
+				"linux"		"135"
+				"windows"	"134"
+			}
+			"CTFWeaponBase::AllowTaunts"
+			{
+				"library"	"server"
+				"linux"		"420"
+				"windows"	"413"
+			}
+		}
+	}
+}
