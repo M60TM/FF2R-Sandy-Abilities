@@ -9,7 +9,7 @@ Required:
 - [SM-TFUtils](https://github.com/nosoop/SM-TFUtils)
 - [tf2attributes](https://github.com/FlaminSarge/tf2attributes)
 - [SM-TFDamageInfo](https://github.com/nosoop/SM-TFDamageInfo)
-- [TF2-Stun](https://github.com/M60TM/TF2-Stun)
+- [SM-TF2-Another-Utils](https://github.com/M60TM/SM-TF2-Another-Utils)
 - [stocksoup (compile only)](https://github.com/nosoop/stocksoup)
 
 ----
