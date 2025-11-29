@@ -78,12 +78,37 @@ void BraveJump_OnBossCreated(int client, BossData cfg) {
 		if (ability.IsMyPlugin()) {
 			BraveJumpEnabled[client] = true;
 			ability.SetFloat("delay", GetGameTime() + ability.GetFloat("delay", 5.0));
+			SDKHook(client, SDKHook_OnTakeDamagePost, OnTakeDamagePost);
 		}
 	}
 }
 
 void BraveJump_OnBossRemoved(int client) {
-	BraveJumpEnabled[client] = false;
+	if (BraveJumpEnabled[client]) {
+		BraveJumpEnabled[client] = false;
+		SDKUnhook(client, SDKHook_OnTakeDamagePost, OnTakeDamagePost);
+	}
+}
+
+static void OnTakeDamagePost(int victim, int attacker, int inflictor, float damage, int damagetype, int weapon, const float damageForce[3], const float damagePosition[3], int damagecustom) {
+	if (attacker > MaxClients || (!attacker && (inflictor || !(damagetype & DMG_FALL)))) {
+		if (BraveJumpEnabled[victim]) {
+			BossData boss = FF2R_GetBossData(victim);
+			AbilityData ability;
+			if (boss && (ability = boss.GetAbility("special_brave_jump"))) {
+				if (damage > ability.GetFloat("min_emergency_damage", 100.0)) {
+					ability.SetBool("incooldown", false);
+					ability.SetFloat("delay", 0.0);
+					ability.SetFloat("emergencyfor", GetGameTime() + 0.5);
+				}
+				return;
+			}
+			
+			BraveJumpEnabled[victim] = false;
+		}
+		
+		SDKUnhook(victim, SDKHook_OnTakeDamagePost, OnTakeDamagePost);
+	}
 }
 
 void BraveJumpFrame(int userid) {
