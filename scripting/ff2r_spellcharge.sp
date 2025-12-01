@@ -1,3 +1,24 @@
+/*
+	"special_spell_charge"
+	{
+		"type"		"6"		// Spell type. 4 - Blast Jump, 6 - Teleport
+		"height"	"0.78"	// Hud height.
+		"delay"		"5.0"	// Initial cooldown
+		"max"		"2"		// Max spell charge amount
+		"cooldown"	"7.5"	// Cooldown
+		"deploy"	"1.0"	// Deploy speed
+		
+		"plugin_name"	"ff2r_spellcharge"
+	}
+	
+	"rage_spell_charge"
+	{
+		"type"		"0"		// Spell type. 1 - Fireball.
+		"amount"	"2"		// Spell charge amount.
+		
+		"plugin_name"	"ff2r_spellcharge"
+	}
+*/
 #include <sourcemod>
 #include <tf2items>
 #include <tf2utils>

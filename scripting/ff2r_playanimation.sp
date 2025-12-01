@@ -1,16 +1,62 @@
 /*
-	"intro_playanimation"
+	"intro_playsequence"
 	{
-		"animation"	"ACT_TRANSITION"					// If type is 1, sequence name or activity name. type is 2, activity name.
-		"type"		"2"									// 1 - Force Sequence 2 - Play Gesture
+		"delay"			"0.0"
+		"animation"		"taunt03"	// sequence name
+		
 		"plugin_name"	"ff2r_playanimation"
 	}
 	
-	"rage_playanimation"
+	"intro_playgesture"
 	{
-		"slot"		"0"									// Ability Slot
-		"animation"	"ACT_MP_GESTURE_VC_HANDMOUTH_ITEM1" // If type is 1, sequence name or activity name. type is 2, activity name.
-		"type"		"2"									// 1 - Force Sequence 2 - Play Gesture
+		"delay"			"0.0"
+		"animation"		"ACT_MP_GESTURE_VC_HANDMOUTH_ITEM1"	// activity name
+		
+		"plugin_name"	"ff2r_playanimation"
+	}
+	
+	"intro_doanimationevent"
+	{
+		"delay"			"0.0"
+		"animation"		"0"	// event index
+		
+		"plugin_name"	"ff2r_playanimation"
+	}
+	
+	"rage_playsequence"
+	{
+		"slot"			"0"
+		"delay"			"0.0"
+		"animation"		"taunt03"	// sequence name
+		
+		"plugin_name"	"ff2r_playanimation"
+	}
+	
+	"rage_playgesture"
+	{
+		"slot"			"0"
+		"delay"			"0.0"
+		"animation"		"ACT_MP_GESTURE_VC_HANDMOUTH_ITEM1"	// activity name
+		
+		"plugin_name"	"ff2r_playanimation"
+	}
+	
+	"rage_doanimationevent"
+	{
+		"slot"			"0"
+		"delay"			"0.0"
+		"animation"		"0"	// event index
+		
+		"plugin_name"	"ff2r_playanimation"
+	}
+	
+	"rage_playviewmodel"
+	{
+		"slot"			"0"
+		"delay"			"0.0"
+		"activity"		"vsh_slam_land" // sequence name or activity name
+		"reset"			"true"			// Force play viewmodel animation
+		
 		"plugin_name"	"ff2r_playanimation"
 	}
 */
@@ -144,7 +190,7 @@ public void FF2R_OnBossCreated(int client, BossData cfg, bool setup) {
 			ability.GetString("animation", animation, sizeof(animation));
 			
 			DataPack pack;
-			AnimationTimerList[client].Push(CreateDataTimer(ability.GetFloat("delay"), Timer_PlaySequence, pack, TIMER_FLAG_NO_MAPCHANGE));
+			AnimationTimerList[client].Push(CreateDataTimer(ability.GetFloat("delay"), Timer_PlaySequence, pack));
 			pack.WriteCell(client);
 			pack.WriteString(animation);
 		}
@@ -155,7 +201,7 @@ public void FF2R_OnBossCreated(int client, BossData cfg, bool setup) {
 			ability.GetString("animation", animation, sizeof(animation));
 			
 			DataPack pack;
-			AnimationTimerList[client].Push(CreateDataTimer(ability.GetFloat("delay"), Timer_PlayGesture, pack, TIMER_FLAG_NO_MAPCHANGE));
+			AnimationTimerList[client].Push(CreateDataTimer(ability.GetFloat("delay"), Timer_PlayGesture, pack));
 			pack.WriteCell(client);
 			pack.WriteString(animation);
 		}
@@ -166,7 +212,7 @@ public void FF2R_OnBossCreated(int client, BossData cfg, bool setup) {
 			ability.GetString("animation", animation, sizeof(animation));
 			
 			DataPack pack;
-			AnimationTimerList[client].Push(CreateDataTimer(ability.GetFloat("delay"), Timer_DoAnimationEvent, pack, TIMER_FLAG_NO_MAPCHANGE));
+			AnimationTimerList[client].Push(CreateDataTimer(ability.GetFloat("delay"), Timer_DoAnimationEvent, pack));
 			pack.WriteCell(client);
 			pack.WriteCell(ability.GetInt("event", view_as<int>(PLAYERANIMEVENT_CUSTOM)));
 			pack.WriteString(animation);
@@ -190,7 +236,7 @@ public void FF2R_OnAbility(int client, const char[] ability, AbilityData cfg) {
 		cfg.GetString("animation", animation, sizeof(animation));
 		
 		DataPack pack;
-		AnimationTimerList[client].Push(CreateDataTimer(cfg.GetFloat("delay"), Timer_PlaySequence, pack, TIMER_FLAG_NO_MAPCHANGE));
+		AnimationTimerList[client].Push(CreateDataTimer(cfg.GetFloat("delay"), Timer_PlaySequence, pack));
 		pack.WriteCell(client);
 		pack.WriteString(animation);
 	}
@@ -199,7 +245,7 @@ public void FF2R_OnAbility(int client, const char[] ability, AbilityData cfg) {
 		cfg.GetString("animation", animation, sizeof(animation));
 		
 		DataPack pack;
-		AnimationTimerList[client].Push(CreateDataTimer(cfg.GetFloat("delay"), Timer_PlayGesture, pack, TIMER_FLAG_NO_MAPCHANGE));
+		AnimationTimerList[client].Push(CreateDataTimer(cfg.GetFloat("delay"), Timer_PlayGesture, pack));
 		pack.WriteCell(client);
 		pack.WriteString(animation);
 	}
@@ -208,7 +254,7 @@ public void FF2R_OnAbility(int client, const char[] ability, AbilityData cfg) {
 		cfg.GetString("animation", animation, sizeof(animation));
 		
 		DataPack pack;
-		AnimationTimerList[client].Push(CreateDataTimer(cfg.GetFloat("delay"), Timer_DoAnimationEvent, pack, TIMER_FLAG_NO_MAPCHANGE));
+		AnimationTimerList[client].Push(CreateDataTimer(cfg.GetFloat("delay"), Timer_DoAnimationEvent, pack));
 		pack.WriteCell(client);
 		pack.WriteCell(cfg.GetInt("event", view_as<int>(PLAYERANIMEVENT_CUSTOM)));
 		pack.WriteString(animation);
@@ -218,7 +264,7 @@ public void FF2R_OnAbility(int client, const char[] ability, AbilityData cfg) {
 		cfg.GetString("activity", animation, sizeof(animation));
 		
 		DataPack pack;
-		AnimationTimerList[client].Push(CreateDataTimer(cfg.GetFloat("delay"), Timer_PlayViewmodel, pack, TIMER_FLAG_NO_MAPCHANGE));
+		AnimationTimerList[client].Push(CreateDataTimer(cfg.GetFloat("delay"), Timer_PlayViewmodel, pack));
 		pack.WriteCell(client);
 		pack.WriteString(animation);
 		pack.WriteCell(cfg.GetBool("reset", true));
