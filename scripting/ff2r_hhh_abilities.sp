@@ -161,11 +161,6 @@ public void FF2R_OnAbility(int client, const char[] ability, AbilityData cfg) {
 
 public Action TF2_OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype, int &weapon, float damageForce[3], float damagePosition[3], int damagecustom, CritType &critType) {
 	if (victim != attacker && attacker > 0 && attacker <= MaxClients && HHHTraits[attacker].Enabled && !FF2R_GetBossData(victim)) {
-		float flDamage = float(GetClientHealth(victim)) * 0.8;
-		if (flDamage > damage) {
-			damage = flDamage;
-		}
-		
 		// Prevent to use knockback to escape dangerous situation
 		damagetype |= DMG_PREVENT_PHYSICS_FORCE;
 		return Plugin_Changed;
