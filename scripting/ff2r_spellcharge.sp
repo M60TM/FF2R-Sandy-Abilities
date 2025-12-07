@@ -74,6 +74,7 @@ void FF2R_PluginLoaded() {
 			BossData cfg = FF2R_GetBossData(client);
 			if (cfg) {
 				FF2R_OnBossCreated(client, cfg, false);
+				FF2R_OnBossEquipped(client, true);
 			}
 		}
 	}
@@ -124,13 +125,26 @@ public void FF2R_OnBossCreated(int client, BossData cfg, bool setup) {
 				ability.SetFloat("delay", GetGameTime() + ability.GetFloat("delay", 5.0));
 				SpellHUDHeight[client] = ability.GetFloat("height", 0.73);
 				
-				int spellbook = TF2_GetPlayerSpellBook(client);
-				if (!IsValidEntity(spellbook)) {
-					GiveSpellbook(client, ability.GetFloat("deploy", 1.0));
-				}
-				
 				if (!GameRules_GetProp("m_bIsUsingSpells"))
 					GameRules_SetProp("m_bIsUsingSpells", true);
+			}
+		}
+	}
+}
+
+public void FF2R_OnBossEquipped(int client, bool weapons) {
+	if (weapons) {
+		AbilityData ability = FF2R_GetBossData(client).GetAbility("special_spell_charge");
+		if (ability.IsMyPlugin()) {
+			int spellbook = TF2Util_GetPlayerLoadoutEntity(client, 9);
+			if (IsValidEntity(spellbook)) {
+				if (!HasEntProp(spellbook, Prop_Send, "m_iSpellCharges")) {
+					TF2_RemoveWearable(client, spellbook);
+					GiveSpellbook(client, ability.GetFloat("deploy", 1.0));
+				}
+			}
+			else {
+				GiveSpellbook(client, ability.GetFloat("deploy", 1.0));
 			}
 		}
 	}
