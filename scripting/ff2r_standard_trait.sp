@@ -200,20 +200,32 @@ ArrayList BossTimers[MAXPLAYERS + 1];
 
 Handle PlayerOverlayTimer[MAXPLAYERS + 1] = { null, ... };
 
+bool SpecialParticle[MAXPLAYERS + 1];
+
+float CrippleFor[MAXPLAYERS + 1];
+float CrippleDuration[MAXPLAYERS + 1];
+
 ConVar mp_friendlyfire;
 ConVar ff2_block_suicide;
 
 #include "freak_fortress_2/formula_parser.sp"
 #include "freak_fortress_2/subplugin.sp"
-//#include "ff2r_standard_trait/dhooks.sp"
+#include "ff2r_standard_trait/stocks.sp"
 #include "ff2r_standard_trait/events.sp"
 #include "ff2r_standard_trait/sdktools.sp"
+
+public Plugin myinfo = {
+	name = "[FF2R] Standard Trait",
+	author = "B14CK04K",
+	description = "Provides passive and active abilities.",
+	version = "1.0.0",
+	url = ""
+};
 
 public void OnPluginStart() {
 	ff2_block_suicide = CreateConVar("ff2_block_suicide", "0", "Block suicide", 0, true, 0.0, true, 1.0);
 	
 	SDKCall_Setup();
-	
 	
 	mp_friendlyfire = FindConVar("mp_friendlyfire");
 	
@@ -233,6 +245,8 @@ public void OnPluginStart() {
 void FF2R_PluginLoaded() {
 	for (int client = 1; client <= MaxClients; client++) {
 		if (IsClientInGame(client)) {
+			OnClientPutInServer(client);
+			
 			BossData cfg = FF2R_GetBossData(client);
 			if (cfg) {
 				FF2R_OnBossCreated(client, cfg, false);
@@ -240,10 +254,6 @@ void FF2R_PluginLoaded() {
 			}
 		}
 	}
-}
-
-public void OnMapStart() {
-	PrecacheEffect("ParticleEffectStop");
 }
 
 public void OnPluginEnd() {
@@ -258,12 +268,24 @@ public void OnPluginEnd() {
 	}
 }
 
+public void OnMapStart() {
+	PrecacheEffect("ParticleEffectStop");
+}
+
+public void OnMapEnd() {
+	BlockSuicideBoss.Clear();
+}
+
 public void OnLibraryAdded(const char[] name) {
 	Subplugin_LibraryAdded(name);
 }
 
 public void OnLibraryRemoved(const char[] name) {
 	Subplugin_LibraryRemoved(name);
+}
+
+public void OnClientPutInServer(int client) {
+	SDKHook(client, SDKHook_OnTakeDamagePost, CrippleOnTakeDamagePost);
 }
 
 public void OnClientDisconnect(int client) {
@@ -323,7 +345,7 @@ public void OnEntityCreated(int entity, const char[] classname) {
 		AcceptEntityInput(entity, "Kill");
 }
 
-public void OnTakeDamagePost(int victim, int attacker, int inflictor, float damage, int damagetype, int weapon, const float damageForce[3], const float damagePosition[3], int damagecustom)
+void OnTakeDamagePost(int victim, int attacker, int inflictor, float damage, int damagetype, int weapon, const float damageForce[3], const float damagePosition[3], int damagecustom)
 {
 	if(0 < attacker <= MaxClients && IsClientInGame(attacker) && GetClientTeam(victim) != GetClientTeam(attacker))
 	{
@@ -342,6 +364,18 @@ public void OnTakeDamagePost(int victim, int attacker, int inflictor, float dama
 		}
 		
 		SDKUnhook(victim, SDKHook_OnTakeDamagePost, OnTakeDamagePost);
+	}
+}
+
+void CrippleOnTakeDamagePost(int victim, int attacker, int inflictor, float damage, int damagetype, int weapon, const float damageForce[3], const float damagePosition[3], int damagecustom) {
+	if (attacker > 0 && attacker <= MaxClients && CrippleFor[attacker] > GetGameTime() && !IsInvuln(victim) && (GetClientTeam(victim) != GetClientTeam(attacker) || mp_friendlyfire.BoolValue)) {
+		if (IsValidEntity(weapon) && TF2Util_IsEntityWeapon(weapon) && TF2Util_GetWeaponSlot(weapon) == TFWeaponSlot_Melee) {
+			TF2_AddCondition(victim, TFCond_RestrictToMelee, CrippleDuration[attacker], attacker);
+			TF2_StunPlayer(victim, 0.8, 0.0, TF_STUNFLAGS_LOSERSTATE, attacker);
+			int entity = GetPlayerWeaponSlot(victim, TFWeaponSlot_Melee);
+			if (entity != -1)
+				TF2Util_SetPlayerActiveWeapon(victim, entity);
+		}
 	}
 }
 
@@ -402,9 +436,11 @@ public void FF2R_OnBossEquipped(int client, bool weapons) {
 			ApplyBossAttributes(client, ability);
 		}
 		
-		ability = boss.GetAbility("special_boss_particle");
-		if (ability.IsMyPlugin()) {
-			ApplyBossParticle(client, ability);
+		if (!SpecialParticle[client]) {
+			ability = boss.GetAbility("special_boss_particle");
+			if (ability.IsMyPlugin()) {
+				ApplyBossParticle(client, ability);
+			}
 		}
 	}
 }
@@ -419,6 +455,8 @@ public void FF2R_OnBossRemoved(int client) {
 	
 	BlockDropRune[client] = false;
 	SpecialDisguise[client] = false;
+	
+	CrippleFor[client] = 0.0;
 	
 	if (BlockSuicide[client]) {
 		int index = BlockSuicideBoss.FindValue(client);
@@ -523,6 +561,11 @@ public void FF2R_OnAbility(int client, const char[] ability, AbilityData cfg) {
 	else if (!StrContains(ability, "rage_self_heal", false)) {
 		Rage_SelfHeal(client, cfg);
 	}
+	else if (!StrContains(ability, "rage_weapon_cripple", false)) {
+		int alive = TotalPlayersAliveEnemy(mp_friendlyfire.BoolValue ? -1 : GetClientTeam(client));
+		CrippleFor[client] = GetGameTime() + GetFormula(cfg, "duration", alive, 7.5);
+		CrippleDuration[client] = GetFormula(cfg, "cripple", alive, 5.0);
+	}
 }
 
 public void FF2R_OnAliveChanged(const int alive[4], const int total[4]) {
@@ -575,9 +618,6 @@ bool ApplyHealOnKill(int client, int victim, ConfigData cfg) {
 	switch (cfg.GetInt("type")) {
 		case 1: {
 			amount = RoundFloat(GetFormula(cfg, "gain", TotalPlayersAliveEnemy(mp_friendlyfire.BoolValue ? -1 : GetClientTeam(client)), 0.0));
-		}
-		case 2: {
-			amount = RoundFloat(SDKCall_GetClientMaxHealth(client) * cfg.GetFloat("percentage"));
 		}
 		default: {
 			amount = RoundFloat(SDKCall_GetClientMaxHealth(victim) * cfg.GetFloat("multiplier", 1.0));
@@ -660,6 +700,8 @@ void ApplyBossAttributes(int client, ConfigData cfg) {
 }
 
 void ApplyBossParticle(int client, ConfigData cfg) {
+	ClearBossParticle(client);
+	
 	ConfigData cfgParticle = cfg.GetSection("particles");
 	StringMapSnapshot snap = cfgParticle.Snapshot();
 	
@@ -669,107 +711,64 @@ void ApplyBossParticle(int client, ConfigData cfg) {
 		GetClientModel(client, model, sizeof(model));
 		
 		int prop = CreateEntityByName("tf_taunt_prop");
-		DispatchSpawn(prop);
-		ActivateEntity(prop);
-		SetEntityModel(prop, model);
-		
-		SetEntityRenderColor(prop, 0, 0, 0, 0);
-		SetEntityRenderMode(prop, RENDER_TRANSALPHA);
-
-		SetEntProp(prop, Prop_Send, "m_fEffects", GetEntProp(prop, Prop_Send, "m_fEffects")|EF_BONEMERGE|EF_NOSHADOW|EF_NORECEIVESHADOW);
-		SetEntPropEnt(prop, Prop_Data, "m_hEffectEntity", client);
-
-		SetVariantString("!activator");
-		AcceptEntityInput(prop, "SetParent", client);
-		
-		for (int i; i < entries; i++) {
-			int length = snap.KeyBufferSize(i) + 1;
-			char[] key = new char[length];
-			snap.GetKey(i, key, length);
+		if (prop > -1) {
+			DispatchSpawn(prop);
+			ActivateEntity(prop);
+			SetEntityModel(prop, model);
 			
-			ConfigData val = cfgParticle.GetSection(key);
-			if (val) {
-				char particle[64];
-				if (!val.GetString("particle", particle, sizeof(particle)))
-					continue;
+			SetEntityRenderColor(prop, 0, 0, 0, 0);
+			SetEntityRenderMode(prop, RENDER_TRANSALPHA);
+
+			SetEntProp(prop, Prop_Send, "m_fEffects", GetEntProp(prop, Prop_Send, "m_fEffects")|EF_BONEMERGE|EF_NOSHADOW|EF_NORECEIVESHADOW);
+			SetEntPropEnt(prop, Prop_Data, "m_hEffectEntity", client);
+
+			SetVariantString("!activator");
+			AcceptEntityInput(prop, "SetParent", client);
+			
+			for (int i; i < entries; i++) {
+				int length = snap.KeyBufferSize(i) + 1;
+				char[] key = new char[length];
+				snap.GetKey(i, key, length);
 				
-				ParticleAttachment_t attachtype = view_as<ParticleAttachment_t>(val.GetInt("attachment_type", 6));
-				
-				char point[64];
-				if (val.GetString("attachment_point", point, sizeof(point))) {
-					int attachpoint = LookupEntityAttachment(client, point);
-					if (attachpoint) {
-						TE_SetupTFParticleEffect(particle, NULL_VECTOR, _, _, prop, attachtype, attachpoint, false);
+				ConfigData val = cfgParticle.GetSection(key);
+				if (val) {
+					char particle[64];
+					if (!val.GetString("particle", particle, sizeof(particle)))
+						continue;
+					
+					ParticleAttachment_t attachtype = view_as<ParticleAttachment_t>(val.GetInt("attachment_type", 6));
+					
+					char point[64];
+					if (val.GetString("attachment_point", point, sizeof(point))) {
+						int attachpoint = LookupEntityAttachment(client, point);
+						if (attachpoint) {
+							TE_SetupTFParticleEffect(particle, NULL_VECTOR, _, _, prop, attachtype, attachpoint, false);
+							TE_SendToAll(0.0);
+						}
+					}
+					else {
+						TE_SetupTFParticleEffect(particle, NULL_VECTOR, _, _, prop, attachtype, -1, false);
 						TE_SendToAll(0.0);
 					}
 				}
-				else {
-					TE_SetupTFParticleEffect(particle, NULL_VECTOR, _, _, prop, attachtype, -1, false);
-					TE_SendToAll(0.0);
-				}
 			}
-		}
-		
-		SetEdictFlags(prop, GetEdictFlags(prop) | FL_EDICT_ALWAYS);
-		CreateTimer(0.2, Timer_ApplySetTransmit, prop, TIMER_FLAG_NO_MAPCHANGE);
-	}
-	
-	delete snap;
-}
-
-/*
-void ApplyBossParticle(int client, ConfigData cfg) {
-	ConfigData cfgParticle = cfg.GetSection("particles");
-	StringMapSnapshot snap = cfgParticle.Snapshot();
-	
-	int entries = snap.Length;
-	for (int i; i < entries; i++) {
-		int length = snap.KeyBufferSize(i) + 1;
-		char[] key = new char[length];
-		snap.GetKey(i, key, length);
-		
-		ConfigData val = cfgParticle.GetSection(key);
-		if (val) {
-			char particle[64];
-			if (!val.GetString("particle", particle, sizeof(particle)))
-				continue;
 			
-			//PrintToChatAll("%s", particle);
-			
-			int entity = TF2_AttachParticle(particle, client);
-			SetEdictFlags(entity, GetEdictFlags(entity) | FL_EDICT_ALWAYS);
-			CreateTimer(0.2, Timer_ApplySetTransmit, entity, TIMER_FLAG_NO_MAPCHANGE);
+			SpecialParticle[client] = true;
+			SetEdictFlags(prop, GetEdictFlags(prop) | FL_EDICT_ALWAYS);
+			// Gives enough times to particle can be fully appeared.
+			CreateTimer(0.5, Timer_ApplySetTransmit, EntIndexToEntRef(prop), TIMER_FLAG_NO_MAPCHANGE);
 		}
 	}
 	
 	delete snap;
 }
-*/
 
 void ClearBossParticle(int client) {
-	/*
-	int entity = INVALID_ENT_REFERENCE;
-	while ((entity = FindEntityByClassname(entity, "info_particle_system")) != INVALID_ENT_REFERENCE) {
-		if (GetEntPropEnt(entity, Prop_Data, "m_pParent") != client)
-			continue;
-		
-		SetVariantString("ParticleEffectStop");
-		AcceptEntityInput(entity, "DispatchEffect");
-		AcceptEntityInput(entity, "ClearParent");
-		
-		// Some particles don't get removed properly, teleport far away then delete it
-		static const float outsidePos[3] = {8192.0, 8192.0, 8192.0};
-		TeleportEntity(entity, outsidePos);
-		
-		// Give enough time for effect to fade out before getting destroyed
-		SetVariantString("OnUser1 !self:Kill::0.5:1");
-		AcceptEntityInput(entity, "AddOutput");
-		AcceptEntityInput(entity, "FireUser1");
-	}
-	*/
+	SpecialParticle[client] = false;
+	
 	int entity = INVALID_ENT_REFERENCE;
 	while ((entity = FindEntityByClassname(entity, "tf_taunt_prop")) != INVALID_ENT_REFERENCE) {
-		if (GetEntPropEnt(entity, Prop_Data, "m_hParent") == client) {
+		if (GetEntPropEnt(entity, Prop_Data, "m_hEffectEntity") == client) {
 			SetVariantString("ParticleEffectStop");
 			AcceptEntityInput(entity, "DispatchEffect");
 			AcceptEntityInput(entity, "ClearParent");
@@ -782,118 +781,4 @@ void ClearBossParticle(int client) {
 			AcceptEntityInput(entity, "FireUser1");
 		}
 	}
-}
-
-Action Timer_ApplySetTransmit(Handle timer, int entity) {
-	// Entity reference here
-	if (IsValidEntity(entity)) {
-		SetEdictFlags(entity, GetEdictFlags(entity) & ~FL_EDICT_ALWAYS);
-		SDKHook(entity, SDKHook_SetTransmit, AttachEnt_SetTransmit);
-	}
-	
-	return Plugin_Continue;
-}
-
-Action AttachEnt_SetTransmit(int attachEnt, int client) {
-	int owner = GetEntPropEnt(attachEnt, Prop_Data, "m_pParent");
-	if (owner == INVALID_ENT_REFERENCE)
-		return Plugin_Stop;
-	
-	if (owner != client) {
-		if (GetEntPropEnt(client, Prop_Send, "m_hObserverTarget") == owner && GetEntProp(client, Prop_Send, "m_iObserverMode") == OBS_MODE_IN_EYE)
-		    return Plugin_Stop;
-	}
-	else if (!TF2_IsPlayerInCondition(owner, TFCond_Taunting) && !GetEntProp(owner, Prop_Send, "m_nForceTauntCam")) {
-		return Plugin_Stop;
-	}
-
-	if (TF2_IsPlayerInCondition(owner, TFCond_Cloaked) || TF2_IsPlayerInCondition(owner, TFCond_Disguised) || TF2_IsPlayerInCondition(owner, TFCond_Stealthed))
-		return Plugin_Stop;
-	
-	return Plugin_Continue;
-}
-
-public Action Timer_RemovePlayerOverlay(Handle timer, int userid) {
-	int client = GetClientOfUserId(userid);
-	
-	if (client) {
-		PlayerOverlayTimer[client] = null;
-		SetVariantString("");
-		AcceptEntityInput(client, "SetScriptOverlayMaterial", client, client);
-	}
-	return Plugin_Continue;
-}
-
-float GetFormula(ConfigData cfg, const char[] key, int players, float defaul = 0.0) {
-	static char buffer[1024];
-	if (!cfg.GetString(key, buffer, sizeof(buffer)))
-		return defaul;
-	
-	return ParseFormula(buffer, players);
-}
-
-float GetBossCharge(ConfigData cfg, const char[] slot, float defaul = 0.0) {
-	int length = strlen(slot)+7;
-	char[] buffer = new char[length];
-	Format(buffer, length, "charge%s", slot);
-	return cfg.GetFloat(buffer, defaul);
-}
-
-void SetBossCharge(ConfigData cfg, const char[] slot, float amount) {
-	int length = strlen(slot)+7;
-	char[] buffer = new char[length];
-	Format(buffer, length, "charge%s", slot);
-	cfg.SetFloat(buffer, amount);
-}
-
-int TotalPlayersAliveEnemy(int team = -1) {
-	int amount;
-	for (int i = SpecTeam ? 0 : 2; i < sizeof(PlayersAlive); i++) {
-		if (i != team)
-			amount += PlayersAlive[i];
-	}
-	
-	return amount;
-}
-
-stock void PrecacheEffect(const char[] sEffectName) {
-	static int table = INVALID_STRING_TABLE;
-	if (table == INVALID_STRING_TABLE) {
-		table = FindStringTable("EffectDispatch");
-	}
-	
-	bool save = LockStringTables(false);
-	AddToStringTable(table, sEffectName);
-	LockStringTables(save);
-}
-
-/*
-stock int TF2_AttachParticle(const char[] particle, int client) {
-	char model[PLATFORM_MAX_PATH];
-	GetClientModel(client, model, sizeof(model));
-	
-	int prop = CreateEntityByName("tf_taunt_prop");
-	DispatchSpawn(prop);
-	ActivateEntity(prop);
-	SetEntityModel(prop, model);
-	
-	SetEntityRenderColor(prop, 0, 0, 0, 0);
-	SetEntityRenderMode(prop, RENDER_TRANSALPHA);
-
-	SetEntProp(prop, Prop_Send, "m_fEffects", GetEntProp(prop, Prop_Send, "m_fEffects")|EF_BONEMERGE|EF_NOSHADOW|EF_NORECEIVESHADOW);
-	SetEntPropEnt(prop, Prop_Data, "m_hEffectEntity", client);
-
-	SetVariantString("!activator");
-	AcceptEntityInput(prop, "SetParent", client);
-	
-	TE_SetupTFParticleEffect(particle, NULL_VECTOR, _, _, prop, PATTACH_ROOTBONE_FOLLOW, -1, false);
-	TE_SendToAll(0.0);
-	
-	//Return ref of entity
-	return EntIndexToEntRef(prop);
-}
-*/
-
-stock any Min(any a, any b) {
-	return a > b ? b : a;
 }

@@ -2,12 +2,47 @@
 #pragma newdecls required
 
 void Events_OnPluginStart() {
-	HookEvent("player_death", OnPlayerDeathPre, EventHookMode_Pre);
-	HookEvent("player_death", OnPlayerDeath, EventHookMode_Post);
-	HookEvent("object_destroyed", OnObjectDestroyed, EventHookMode_Pre);
+	HookEvent("player_hurt", Events_PlayerHurt, EventHookMode_Post);
+	HookEvent("player_death", Events_PlayerDeathPre, EventHookMode_Pre);
+	HookEvent("player_death", Events_PlayerDeath, EventHookMode_Post);
+	HookEvent("object_destroyed", Events_ObjectDestroyed, EventHookMode_Pre);
 }
 
-static Action OnPlayerDeathPre(Event event, const char[] name, bool dontBroadcast) {
+static void Events_PlayerHurt(Event event, const char[] name, bool dontBroadcast) {
+	int victim = GetClientOfUserId(event.GetInt("userid"));
+	if (victim < 1 || victim > MaxClients) {
+		return;
+	}
+	
+	int attacker = GetClientOfUserId(event.GetInt("attacker"));
+	if (victim == attacker || attacker < 1 || attacker > MaxClients) {
+		return;
+	}
+	
+	BossData boss = FF2R_GetBossData(attacker);
+	if (boss) {
+		AbilityData ability = boss.GetAbility("special_rage_on_damage");
+		if (ability.IsMyPlugin()) {
+			float ragedmg = boss.RageDamage;
+			if (ragedmg > 0.0) {
+				float rage = boss.GetCharge(0);
+				float maxrage = boss.RageMax;
+				if (rage < maxrage) {
+					int damage = event.GetInt("damageamount");
+					rage += (damage * 100.0 / ragedmg);
+					if (rage > maxrage) {
+						FF2R_EmitBossSoundToAll("sound_full_rage", attacker, _, attacker, SNDCHAN_AUTO, SNDLEVEL_AIRCRAFT, _, 2.0);
+						rage = maxrage;
+					}
+					
+					boss.SetCharge(0, rage);
+				}
+			}
+		}
+	}
+}
+
+static Action Events_PlayerDeathPre(Event event, const char[] name, bool dontBroadcast) {
 	int attacker = GetClientOfUserId(event.GetInt("attacker"));
 	if (!attacker) {
 		return Plugin_Continue;
@@ -50,7 +85,7 @@ static Action OnPlayerDeathPre(Event event, const char[] name, bool dontBroadcas
 	return Plugin_Continue;
 }
 
-static Action OnObjectDestroyed(Event event, const char[] name, bool dontBroadcast) {
+static Action Events_ObjectDestroyed(Event event, const char[] name, bool dontBroadcast) {
 	int attacker = GetClientOfUserId(event.GetInt("attacker"));
 	if (!attacker) {
 		return Plugin_Continue;
@@ -93,7 +128,7 @@ static Action OnObjectDestroyed(Event event, const char[] name, bool dontBroadca
 	return Plugin_Continue;
 }
 
-static void OnPlayerDeath(Event event, const char[] name, bool dontBroadcast) {
+static void Events_PlayerDeath(Event event, const char[] name, bool dontBroadcast) {
 	int victim = GetClientOfUserId(event.GetInt("userid"));
 	int attacker = GetClientOfUserId(event.GetInt("attacker"));
 	if (victim) {
