@@ -73,6 +73,27 @@
 				"return"		"int"
 				"this"			"entity"
 			}
+			"CBaseEntity::ShouldTransmit"
+			{
+				"offset"	"CBaseEntity::ShouldTransmit"
+				"hooktype"	"entity"
+				"return"	"int"
+				"this"		"entity"
+				"arguments"
+				{
+					"CCheckTransmitInfo"
+					{
+						"type"	"objectptr"
+					}
+				}
+			}
+			"CBaseEntity::UpdateTransmitState"
+			{
+				"offset"	"CBaseEntity::UpdateTransmitState"
+				"hooktype"	"entity"
+				"return"	"int"
+				"this"		"entity"
+			}
 		}
 		"Signatures"
 		{
@@ -174,6 +195,16 @@
 				"library" 	"server"
 				"windows" 	"488"
 				"linux" 	"496"
+			}
+			"CBaseEntity::ShouldTransmit"
+			{
+				"linux"		"21"
+				"windows"	"20"
+			}
+			"CBaseEntity::UpdateTransmitState"
+			{
+				"linux"		"22"
+				"windows"	"21"
 			}
 		}
 	}
