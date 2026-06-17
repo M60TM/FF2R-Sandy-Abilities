@@ -36,6 +36,7 @@ static Handle ChargeDashHud;
 
 static int CustomDamageChargeDashRef = -1;
 
+static bool ChargeUp[MAXPLAYERS + 1];
 static bool ChargeDashEnabled[MAXPLAYERS + 1];
 static bool ChargeDashing[MAXPLAYERS + 1];
 static char ChargeDashEndAnim[MAXPLAYERS + 1][64];
@@ -60,6 +61,8 @@ void ChargeDash_OnBossCreated(int client, BossData cfg) {
 
 void ChargeDash_OnBossRemoved(int client) {
 	ChargeDashEnabled[client] = false;
+	ChargeUp[client] = false;
+	ChargeDashing[client] = false;
 }
 
 static void ChargeDash_SetupCustomDamage() {
@@ -172,6 +175,7 @@ void ChargeDash_OnPlayerRunCmdPost(int client, int buttons) {
 
 static void ChargeDash_ChargeUp(int client, ConfigData cfg, float& timeIn, bool ground) {
 	if (!timeIn) {
+		ChargeUp[client] = true;
 		timeIn = GetGameTime();
 		cfg.SetFloat("delay", timeIn);
 		EmitSoundToAll(CHARGEDASH_CHARGESOUND, client, SNDCHAN_AUTO);
@@ -312,7 +316,7 @@ static void DoDamageChargeDash(int client, const float pos[3], float damage) {
 				fwd[1] *= 1250.0;
 				fwd[2] = 425.0;
 				
-				TE_SetupTFParticleEffect("taunt_headbutt_impact_stars", targetPos);
+				TE_SetupTFParticleEffect("taunt_headbutt_impact_stars", targetPos, .attachType = PATTACH_CUSTOMORIGIN);
 				TE_SendToAll();
 				
 				SDKHooks_TakeDamage(entity, inflictor, client, damage, DMG_BURN|DMG_PREVENT_PHYSICS_FORCE, weapon, .bypassHooks = false);
@@ -321,7 +325,7 @@ static void DoDamageChargeDash(int client, const float pos[3], float damage) {
 			} else {
 				TF2Util_EntityWorldSpaceCenter(entity, targetPos);
 				
-				TE_SetupTFParticleEffect("taunt_headbutt_impact_stars", targetPos);
+				TE_SetupTFParticleEffect("taunt_headbutt_impact_stars", targetPos, .attachType = PATTACH_CUSTOMORIGIN);
 				TE_SendToAll();
 				
 				SDKHooks_TakeDamage(entity, inflictor, client, GetEntProp(entity, Prop_Data, "m_iMaxHealth") * 4.0, DMG_BURN|DMG_PREVENT_PHYSICS_FORCE, weapon, .bypassHooks = false);
@@ -347,6 +351,8 @@ static Action Timer_EndCharge(Handle timer, int userid) {
 
 static void ChargeDash_ClearChargeUpState(int client, ConfigData cfg) {
 	StopSound(client, SNDCHAN_AUTO, CHARGEDASH_CHARGESOUND);
+	ChargeUp[client] = false;
+	
 	int entity = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
 	if (entity != -1) {
 		int index = cfg.GetInt("weapon_groundindex", -1);
@@ -375,6 +381,10 @@ static void CreateChargeDashWearable(int client, const char[] model, float lifet
 	}
 }
 
+bool ChargeDash_IsChargeUp(int client) {
+	return ChargeDashEnabled[client] && ChargeUp[client];
+}
+
 bool ChargeDash_IsDashing(int client) {
-	return ChargeDashing[client];
+	return ChargeDashEnabled[client] && ChargeDashing[client];
 }
