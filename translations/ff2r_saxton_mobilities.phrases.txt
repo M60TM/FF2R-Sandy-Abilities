@@ -11,6 +11,12 @@
 		"en"	"Brave Jump will be available in {1} second(s)"
 		"ko"	"{1}초 뒤 브레이브 점프 사용 가능"
 	}
+	"Double Jump Lives"
+	{
+		"#format"	"{1:d}"
+		"en"	"Brave Jump will be available on {1} lives"
+		"ko"	"잔기가 {1}개 남았을 때 브레이브 점프 사용 가능"
+	}
 	"Charge Dash Ready"
 	{
 		"#format"	"{1:t},{2:d}"
@@ -32,13 +38,19 @@
 	"Mighty Slam Ready"
 	{
 		"#format"	"{1:t}"
-		"en"	"Mighty Slam | Hold {1} while weighdown"
-		"ko"	"내려찍기 | 급강하 중 {1}키 유지"
+		"en"	"Mighty Slam | Ready - Use Weighdown [{1}]"
+		"ko"	"내려찍기 | 준비됨 - 급강하 사용 [{1}]"
 	}
-	"Mighty Slam Not Ready"
+	"Mighty Slam Cooldown"
 	{
 		"#format"	"{1:.1f}"
 		"en"	"Mighty Slam will be available in {1} second(s)"
 		"ko"	"내려찍기 | 사용까지 {1}초 남음"
+	}
+	"Mighty Slam Not Ready"
+	{
+		"#format"	"{1:t}"
+		"en"	"Mighty Slam | Not Ready [{1}]"
+		"ko"	"내려찍기 | 준비되지 않음 [{1}]"
 	}
 }

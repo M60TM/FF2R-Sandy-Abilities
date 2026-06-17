@@ -55,7 +55,13 @@ void BraveJump_OnPlayerRunCmdPost(int client, int buttons) {
 					GameRules_GetRoundState() != RoundState_TeamWin &&
 					(hud || gameTime > ability.GetFloat("hudin"))) {
 					ability.SetFloat("hudin", gameTime + 0.09);
-					if (!cooldown) {
+					
+					int lives = ability.GetInt("lives", 0);
+					if (lives && boss.Lives > lives) {
+						SetHudTextParams(-1.0, 0.88, 0.1, 255, 64, 64, 255);
+						ShowSyncHudText(client, SyncHud, "%T", "Double Jump Lives", client, lives);
+					}
+					else if (!cooldown) {
 						SetHudTextParams(-1.0, 0.88, 0.1, 255, 255, 255, 255);
 						ShowSyncHudText(client, SyncHud, "%T", "Double Jump Ready", client);
 					}
@@ -124,6 +130,10 @@ void BraveJumpFrame(int userid) {
 	BossData boss = FF2R_GetBossData(client);
 	AbilityData ability;
 	if (boss && (ability = boss.GetAbility("special_brave_jump"))) {
+		int lives = ability.GetInt("lives", 0);
+		if (lives && boss.Lives > lives)
+			return;
+		
 		float gameTime = GetGameTime();
 		if (ability.GetFloat("delay") < gameTime) {
 			float velocity = ability.GetFloat("velocity", 300.0);
