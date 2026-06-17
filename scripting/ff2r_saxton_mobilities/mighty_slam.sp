@@ -9,6 +9,9 @@
 		"damage"		"300.0"
 		"decay"			"1.0"
 		
+		"cooltime"		"5.0"
+		"cooldown"		"10.0"
+		
 		"amplitude"		"10.0"
 		"duration"		"2.0"
 		"frequency"		"255.0"
@@ -34,6 +37,8 @@ static int CustomDamageMightySlamRef = -1;
 static int CustomDamageMightySlamCollateralRef = -1;
 
 static bool MightySlamEnabled[MAXPLAYERS + 1];
+static bool MightySlamPressed[MAXPLAYERS + 1];
+static bool MightySlamReady[MAXPLAYERS + 1];
 static bool MightySlamActivated[MAXPLAYERS + 1];
 static float MightySlamLastGravity[MAXPLAYERS + 1] = {-69.42, ...};
 static float MightySlamCurrentGravity[MAXPLAYERS + 1];
@@ -57,6 +62,8 @@ void MightySlam_OnBossCreated(int client, BossData cfg) {
 void MightySlam_OnBossRemoved(int client) {
 	MightySlamEnabled[client] = false;
 	MightySlamActivated[client] = false;
+	MightySlamPressed[client] = false;
+	MightySlamReady[client] = false;
 	
 	if (MightySlamLastGravity[client] != -69.42) {
 		MightySlam_RestoreGravity(client);
@@ -117,12 +124,33 @@ void MightySlam_OnPlayerRunCmdPost(int client, int buttons, const float angles[3
 				hud = true;
 			}
 			
+			if (!cooldown) {
+				int button = ability.GetInt("button", 13);
+				if (MightySlamPressed[client]) {
+					if (!(buttons & (1 << button)))
+						MightySlamPressed[client] = false;
+				}
+				else {
+					if (buttons & (1 << button)) {
+						MightySlamPressed[client] = true;
+						if (MightySlamReady[client]) {
+							MightySlamReady[client] = false;
+						}
+						else {
+							MightySlamReady[client] = true;
+						}
+						ClientCommand(client, "playgamesound weapons/vaccinator_toggle.wav");
+					}
+				}
+			}
+			
 			int flags = GetEntityFlags(client);
 			if (MightySlamLastGravity[client] != -69.42) {
-				hud = MightySlam_CheckFalling(client, ability, buttons, flags, cooldown);
+				hud = MightySlam_CheckFalling(client, ability, buttons, flags);
 			}
 			else {
-				MightySlam_Weighdown(client, ability, flags, angles[0]);
+				if (!((flags & FL_ONGROUND) || (flags & (FL_SWIM|FL_INWATER))))
+					MightySlam_Weighdown(client, ability, buttons, angles[0]);
 			}
 			
 			if (!(buttons & IN_SCORE) && (hud || ability.GetFloat("hudin") < gameTime) && GameRules_GetRoundState() != RoundState_TeamWin) {
@@ -133,16 +161,22 @@ void MightySlam_OnPlayerRunCmdPost(int client, int buttons, const float angles[3
 					float time = timeIn - gameTime + 0.09;
 					if (time < 999.9) {
 						SetHudTextParams(-1.0, 0.78, 0.1, 255, 255, 255, 255);
-						ShowSyncHudText(client, SlamHud, "%t", "Mighty Slam Not Ready", time);
+						ShowSyncHudText(client, SlamHud, "%t", "Mighty Slam Cooldown", time);
 					}
 				}
 				else {
-					int button = ability.GetInt("button", 13);
 					char buffer[16];
+					int button = ability.GetInt("button", 13);
 					Format(buffer, sizeof(buffer), "Short %d", button);
 					
-					SetHudTextParams(-1.0, 0.78, 0.1, 255, 64, 64, 255);
-					ShowSyncHudText(client, SlamHud, "%t", "Mighty Slam Ready", buffer);
+					if (MightySlamReady[client]) {
+						SetHudTextParams(-1.0, 0.78, 0.1, 255, 64, 64, 255);
+						ShowSyncHudText(client, SlamHud, "%t", "Mighty Slam Ready", buffer);
+					}
+					else {
+						SetHudTextParams(-1.0, 0.78, 0.1, 255, 255, 255, 255);
+						ShowSyncHudText(client, SlamHud, "%t", "Mighty Slam Not Ready", buffer);
+					}
 				}
 			}
 		}
@@ -152,40 +186,45 @@ void MightySlam_OnPlayerRunCmdPost(int client, int buttons, const float angles[3
 	}
 }
 
-static bool MightySlam_CheckFalling(int client, ConfigData cfg, int buttons, int flags, bool cooldown) {
+static bool MightySlam_CheckFalling(int client, ConfigData cfg, int buttons, int flags) {
 	if ((flags & FL_ONGROUND) || (flags & (FL_SWIM|FL_INWATER))) {
 		MightySlam_RestoreGravity(client);
 		
 		if (MightySlamActivated[client]) {
 			MightySlamActivated[client] = false;
+			MightySlamReady[client] = false;
 			Rage_MightySlam(client, cfg);
 			
 			return true;
 		}
 	}
-	/*
-	else if ((!(flags & FL_DUCKING))
-		|| ChargeDash_IsDashing(client)
-		|| TF2_IsPlayerInCondition(client, TFCond_Dazed)
-		|| GetEntityMoveType(client) == MOVETYPE_NONE) {
-	*/
-	else if (!MightySlam_CanWeighdown(client, flags, 90.0)) {
-		MightySlam_RestoreGravity(client);
-		MightySlam_ResetState(client, cfg.GetInt("weapon_index", -1));
-	}
-	else if (!MightySlamActivated[client] && !cooldown) {
-		int button = cfg.GetInt("button", 13);
-		if ((buttons & (1 << button)) && MightySlam_CheckHeight(client, cfg.GetFloat("slam_height", 450.0))) {
-			MightySlam_Ready(client, cfg);
+	else {
+		if (MightySlamActivated[client] && !(MightySlamReady[client] && MightySlam_CanWeighdown(client, buttons, 90.0))) {
+			MightySlam_RestoreGravity(client);
+			MightySlam_ResetState(client, cfg.GetInt("weapon_index", -1));
 		}
+		
+		// Normal weighdown will not be canceled
 	}
 	
 	return false;
 }
 
-static void MightySlam_Weighdown(int client, ConfigData cfg, int flags, float angles) {
-	if (!((flags & FL_ONGROUND) || (flags & (FL_SWIM|FL_INWATER)))
-		&& MightySlam_CanWeighdown(client, flags, angles) && MightySlam_CheckHeight(client, cfg.GetFloat("height", 250.0))) {
+static void MightySlam_Weighdown(int client, ConfigData cfg, int buttons, float angles) {	
+	bool weighdown;
+	if (MightySlamReady[client]) {
+		if (MightySlam_CanWeighdown(client, buttons, angles) && MightySlam_CheckHeight(client, cfg.GetFloat("slam_height", 400.0))) {
+			MightySlam_Setup(client, cfg);
+			weighdown = true;
+		}
+	}
+	else {
+		if (MightySlam_CanWeighdown(client, buttons, angles) && MightySlam_CheckHeight(client, cfg.GetFloat("height", 250.0))) {
+			weighdown = true;
+		}
+	}
+	
+	if (weighdown) {
 		MightySlamLastGravity[client] = GetEntityGravity(client);
 		MightySlamCurrentGravity[client] = cfg.GetFloat("gravity", 4.0);
 		SetEntityGravity(client, MightySlamCurrentGravity[client]);
@@ -203,7 +242,7 @@ static void Rage_MightySlam(int client, ConfigData cfg) {
 	
 	char buffer[64];
 	if (cfg.GetString("particle", buffer, sizeof(buffer), "hammer_impact_button_dust2")) {
-		TE_SetupTFParticleEffect(buffer, pos1);
+		TE_SetupTFParticleEffect(buffer, pos1, .attachType = PATTACH_CUSTOMORIGIN);
 		TE_SendToAll();
 	}
 	
@@ -253,9 +292,6 @@ static void Rage_MightySlam(int client, ConfigData cfg) {
 }
 
 static void MightySlam_ResetState(int client, int index) {
-	if (!MightySlamActivated[client])
-		return;
-	
 	MightySlamActivated[client] = false;
 	if (index == -1)
 		return;
@@ -282,7 +318,7 @@ static void MightySlam_RestoreGravity(int client) {
 	MightySlamLastGravity[client] = -69.42;
 }
 
-static void MightySlam_Ready(int client, ConfigData cfg) {
+static void MightySlam_Setup(int client, ConfigData cfg) {
 	MightySlamActivated[client] = true;
 	
 	int index = cfg.GetInt("slam_index", -1);
@@ -299,9 +335,10 @@ static void MightySlam_Ready(int client, ConfigData cfg) {
 	}
 }
 
-static bool MightySlam_CanWeighdown(int client, int flags, float angles) {
-	return (flags & FL_DUCKING)
+static bool MightySlam_CanWeighdown(int client, int buttons, float angles) {
+	return (buttons & IN_DUCK)
 			&& !ChargeDash_IsDashing(client)
+			&& !ChargeDash_IsChargeUp(client)
 			&& angles > 60.0
 			&& !TF2_IsPlayerInCondition(client, TFCond_Dazed)
 			&& GetEntityMoveType(client) != MOVETYPE_NONE;

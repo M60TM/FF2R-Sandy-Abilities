@@ -22,7 +22,7 @@
 #include "ff2r_saxton_mobilities/sdktools.sp"
 #include "ff2r_saxton_mobilities/brave_jump.sp"
 #include "ff2r_saxton_mobilities/charge_dash.sp"
-#include "ff2r_saxton_mobilities/mighty_slam.sp"
+#include "ff2r_saxton_mobilities/mighty_slam_test.sp"
 
 #define PLUGIN_VERSION	"Custom"
 
@@ -86,6 +86,7 @@ public void OnPluginEnd() {
 
 public void OnMapStart() {
 	PrecacheSound(CHARGEDASH_CHARGESOUND);
+	PrecacheSound("weapons/vaccinator_toggle.wav");
 }
 
 public void OnMapEnd() {
